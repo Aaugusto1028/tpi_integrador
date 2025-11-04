@@ -1,0 +1,43 @@
+# Cada servicio debe tener un puerto único
+server:
+  port: 8081
+
+# Nombre del servicio (para que Eureka lo encuentre)
+spring:
+  application:
+    name: ms-solicitudes
+
+  # --- Configuración de la Base de Datos ÚNICA ---
+  datasource:
+    url: jdbc:postgresql://localhost:5432/db_logistica
+    username: tu_usuario_db
+    password: tu_password_db
+    driver-class-name: org.postgresql.Driver
+
+  # --- Configuración de JPA (Hibernate) ---
+  jpa:
+    hibernate:
+      # 'update' modifica la BD al arrancar (solo para desarrollo)
+      ddl-auto: update
+    properties:
+      hibernate:
+        # --- BUENA PRÁCTICA (Schema-por-Servicio) ---
+        # Esto hace que este servicio trabaje solo en su "esquema"
+        # dentro de la base de datos única.
+        default_schema: solicitudes
+
+  # --- Configuración de Seguridad (Keycloak) ---
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Esta es la URL de tu Realm en Keycloak
+          # Reemplaza 'tu-realm' por el nombre de tu realm
+          issuer-uri: http://localhost:8180/realms/tu-realm
+
+# --- Configuración de Eureka Client ---
+eureka:
+  client:
+    # URL donde corre tu servidor Eureka (que configurarás después)
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
