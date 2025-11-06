@@ -28,4 +28,12 @@ public class Contenedor {
     private List<EstadoContenedor> historialEstados;
     
     // ... (método @Transient getEstadoActual() ) ...
+
+    @Transient// No se persiste en la BD
+    public EstadoContenedor getEstadoActual() {
+        if (historialEstados == null || historialEstados.isEmpty()) {
+            return null;
+        }
+        // Como la lista está ordenada por fecha DESC, el estado más nuevo es el primero
+        return historialEstados.get(0)
 }
