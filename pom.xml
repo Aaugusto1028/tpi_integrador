@@ -23,6 +23,7 @@
     <modules>
     <!-- ACA PONEMOS LOS MICROSERVICIOS CHICOS -->
         <module>ms-solicitudes</module>
+        <module>ms-rutas</module>
         </modules>
 
     <dependencyManagement>
