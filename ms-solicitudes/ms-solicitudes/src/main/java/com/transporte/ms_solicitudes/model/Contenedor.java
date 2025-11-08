@@ -35,5 +35,5 @@ public class Contenedor {
             return null;
         }
         // Como la lista está ordenada por fecha DESC, el estado más nuevo es el primero
-        return historialEstados.get(0)
+        return historialEstados.get(0);
 }
