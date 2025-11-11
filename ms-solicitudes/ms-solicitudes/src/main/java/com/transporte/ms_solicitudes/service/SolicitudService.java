@@ -28,37 +28,42 @@ public class SolicitudService {
 
     // (Más adelante) @Autowired private RutasFeignClient rutasFeignClient;
     // (Más adelante) @Autowired private CamionesFeignClient camionesFeignClient;
-
-    @Transactional //transaccional significa que si algo falla, se deshacen todos los cambios hechos en la BD durante la ejecución del método
-    SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO SolicitudRequestDTO{
-        //QUE ES LO QUE TIENE DTO request?
-        //CLIENTE , PESO , VOLUMEN. fk A CLIENTE fk a Contendor.
-
-
-        //pero que es lo que tiene response?? 
-        /*   private Long idSolicitud;
-            private String nombreCliente;
-            private String estadoActual;
-            private BigDecimal costoEstimado; */
-        Cliente cliente = ClienteRepository.findByDni(SolicitudRequestDTO.getDni());
-        Contenedor contenedor = new Contendor();
-        contenedor.setPeso(request.getPeso());
-        contenedor.serVolumen(request.getVolumen());
+@Transactional //transaccional significa que si algo falla, se deshacen todos los cambios hechos en la BD
+    public SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO request) { // <-- 1. Faltaba el nombre 'request'
         
-        EstadoContenedor estadoActual = new EstadoContenedor(nombre:"Borrador", fecha:LocalDateTime.now(), contendor);
+        // --- QUE ES LO QUE TIENE request? ---
+        // clienteDni, pesoContenedor, volumenContenedor
+
+        // --- QUE ES LO QUE TIENE response?? ---
+        // idSolicitud, nombreCliente, estadoActual, costoEstimado
+        
+        // 2. Usamos la variable 'clienteRepository' (en minúscula)
+        // 3. 'findByDni' devuelve un Optional, hay que "abrirlo"
+        Cliente cliente = clienteRepository.findByDni(request.getClienteDni()) // 4. Usamos los getters del DTO
+                .orElseThrow(() -> new RuntimeException("Cliente no encontrado con DNI: " + request.getClienteDni()));
+
+        Contenedor contenedor = new Contenedor(); // 5. Corregido: Contendor -> Contenedor
+        contenedor.setPeso(request.getPesoContenedor()); // 4. Usamos los getters del DTO
+        contenedor.setVolumen(request.getVolumenContenedor()); // 4. Usamos getters y 5. Corregido: serVolumen -> setVolumen
+        
+        // 6. Sintaxis de constructor de Java (sin nombres de parámetros)
+        EstadoContenedor estadoActual = new EstadoContenedor("Borrador", LocalDateTime.now(), contenedor);
+        // Asignamos el historial al contenedor
+        contenedor.setHistorialEstados(List.of(estadoActual));
 
         Solicitud solicitud = new Solicitud() ;
         solicitud.setCliente(cliente);
         solicitud.setContenedor(contenedor);
-        // 5. Lógica de Costo Estimado (Próximo paso, ahora ponemos un valor fijo)
-        // BigDecimal costoEstimado = calcularCostoEstimado(contenedor.getPeso(), ...);
-        solicitud.setCostoEstimado(new BigDecimal("9999.99")); // Valor temporal
+        
+        // Lógica de Costo Estimado (valor temporal)
+        solicitud.setCostoEstimado(new BigDecimal("9999.99")); 
 
         Solicitud solicitudGuardada = solicitudRepository.save(solicitud);
 
-        SolicitudRequestDTO solicitudResponseDTO = new SolicitudResponseDTO();
+        // 7. El tipo de variable debe ser SolicitudResponseDTO
+        SolicitudResponseDTO solicitudResponseDTO = new SolicitudResponseDTO();
         solicitudResponseDTO.setIdSolicitud(solicitudGuardada.getId());
-        solicitudResponseDTO.setNombreCliente(cliente.getNombre());
+        solicitudResponseDTO.setNombreCliente(cliente.getNombre() + " " + cliente.getApellido()); // Concatenamos
         solicitudResponseDTO.setEstadoActual(estadoActual.getNombre());
         solicitudResponseDTO.setCostoEstimado(solicitudGuardada.getCostoEstimado());
 
