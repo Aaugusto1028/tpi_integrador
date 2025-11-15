@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Entity
-@Table(name = "contenedores")
+@Table(name = "CONTENEDORES")
 @Data
 public class Contenedor {
 

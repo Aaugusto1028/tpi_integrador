@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor; // Es buena práctica agregar un constructor va
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "estado_contenedor")
+@Table(name = "ESTADO_CONTENEDOR")
 @Data
 @NoArgsConstructor // Lombok genera el constructor vacío
 public class EstadoContenedor {
