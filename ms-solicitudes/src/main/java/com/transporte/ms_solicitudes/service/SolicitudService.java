@@ -66,6 +66,9 @@ public class SolicitudService {
 
     @Transactional(readOnly = true)
     public EstadoDTO consultarEstadoSolicitud(Long idSolicitud) {
+        if (idSolicitud == null) {
+        throw new IllegalArgumentException("El ID del cliente no puede ser nulo");
+    }
         Solicitud solicitud = solicitudRepository.findById(idSolicitud)
                 .orElseThrow(() -> new RuntimeException("Solicitud no encontrada: " + idSolicitud));
 

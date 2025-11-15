@@ -7,12 +7,11 @@ spring:
   application:
     name: ms-solicitudes
 
-  # --- Configuración de la Base de Datos ÚNICA ---
+# --- Configuración de la Base de Datos ÚNICA ---
   datasource:
-    # Estos valores AHORA coinciden con tu docker-compose.yml
     url: jdbc:postgresql://localhost:5432/db_logistica
-    username: tpi_user
-    password: 12345678
+    username: tpi_user         
+    password: 12345678      
     driver-class-name: org.postgresql.Driver
 
   # --- Configuración de JPA (Hibernate) ---

@@ -1,5 +1,5 @@
-package com.transporte.mssolicitudes.model;
 
+package com.transporte.ms_solicitudes.model;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor; // Es buena práctica agregar un constructor vacío para JPA

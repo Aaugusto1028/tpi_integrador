@@ -14,7 +14,10 @@ public class ClienteService {
 
     @Transactional(readOnly = true)
     public Cliente buscarClientePorId(Long id) {
-        return clienteRepository.findById(id)
+        if (id == null) {
+        throw new IllegalArgumentException("El ID del cliente no puede ser nulo");
+    }
+        return clienteRepository.findById(id)   
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado con ID: " + id));
     }
 
