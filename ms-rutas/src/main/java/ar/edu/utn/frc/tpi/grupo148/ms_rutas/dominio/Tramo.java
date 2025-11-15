@@ -43,6 +43,10 @@ public class Tramo {
     @Column(name = "patente_camion_asignado")
     private String patenteCamionAsignado; // FK de Camión (otro microservicio)
 
+    //Agregamos luego de la mejora de RutaService Impl
+    @Column(name = "distancia_km")
+    private Double distanciaKm;
+
     @Column(name = "costo_aproximado", precision = 12, scale = 2)
     private BigDecimal costoAproximado;
 
