@@ -1,2 +1,41 @@
+# Datos de la base de datos local
 postgres-data/
-    
+
+### Maven ###
+# Directorio de build de Maven
+target/
+
+# Jar del Maven Wrapper (si se descarga)
+.mvn/wrapper/maven-wrapper.jar
+
+### Logs ###
+# Archivos de log
+*.log
+
+# Archivo de ayuda de Spring Boot
+HELP.md
+
+### IDEs ###
+# VSCode (ya que veo que lo usás)
+.vscode/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+
+# Eclipse / Spring Tool Suite (STS)
+.project
+.classpath
+.factorypath
+.settings/
+.apt_generated
+.springBeans
+.sts4-cache
+
+### Sistema Operativo ###
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
