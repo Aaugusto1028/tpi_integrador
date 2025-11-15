@@ -1,7 +1,6 @@
-package com.transporte.ms_camiones.controllers;
-
-import com.utn.backend.mscamiones.models.Camion;
-import com.utn.backend.mscamiones.services.CamionService;
+package ar.edu.utnfrc.backend.mscamiones.controllers;
+import ar.edu.utnfrc.backend.mscamiones.models.Camion;
+import ar.edu.utnfrc.backend.mscamiones.services.CamionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,31 +19,31 @@ public class CamionController {
     private CamionService camionService; // Inyección de la dependencia del Servicio
 
     // Endpoint: GET /camiones
-    [cite_start]// Roles permitidos: Operador [cite: 2852]
+    // Roles permitidos: Operador
     @GetMapping
     public ResponseEntity<List<Camion>> getAllCamiones(
-            @RequestParam Optional<Boolean> disponibilidad) { // Filtro opcional
-        
+        @RequestParam Optional<Boolean> disponibilidad) { // Filtro opcional
+
         // Usar la lógica del servicio para obtener los camiones.
         List<Camion> camiones = camionService.findAll(disponibilidad);
-        
-        [cite_start]// Retorna la lista con código 200 OK [cite: 3480]
-        return ResponseEntity.ok(camiones); 
+
+        // Retorna la lista con código 200 OK
+        return ResponseEntity.ok(camiones);
     }
-    
+
     // Endpoint: POST /camiones
-    [cite_start]// Roles permitidos: Operador [cite: 2852]
+    // Roles permitidos: Operador
     @PostMapping
     public ResponseEntity<Camion> createCamion(@RequestBody Camion camion) {
         // En un proyecto real, la validación de capacidad (Regla 11) iría en el Service.
         Camion nuevoCamion = camionService.save(camion);
         
-        [cite_start]// Retorna el recurso creado con código 201 Created [cite: 3480]
+       // Retorna el recurso creado con código 201 Created [cite: 3480]
         return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
     }
     
     // Endpoint: GET /camiones/{dominio}
-    [cite_start]// Roles permitidos: Operador [cite: 2852]
+ // Roles permitidos: Operador [cite: 2852]
     @GetMapping("/{patente}")
     public ResponseEntity<Camion> getCamionById(@PathVariable String patente) {
         
