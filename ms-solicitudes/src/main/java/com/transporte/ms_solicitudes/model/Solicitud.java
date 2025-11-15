@@ -1,4 +1,4 @@
-package com.transporte.mssolicitudes.model; // Asegurate que el package sea el correcto
+package com.transporte.ms_solicitudes.model;
 
 import jakarta.persistence.*;
 import lombok.Data;

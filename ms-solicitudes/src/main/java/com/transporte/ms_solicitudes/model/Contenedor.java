@@ -1,5 +1,4 @@
-package com.transporte.mssolicitudes.model;
-
+package com.transporte.ms_solicitudes.model;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
