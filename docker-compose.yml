@@ -16,8 +16,8 @@ services:
     environment:
       # Usuario y BD deben coincidir con tu application.yml
       POSTGRES_DB: db_logistica
-      POSTGRES_USER: tu_usuario_db
-      POSTGRES_PASSWORD: tu_password_db
+      POSTGRES_USER: tpi_user
+      POSTGRES_PASSWORD: 12345678
     ports:
       - "5432:5432" # El puerto de la BD
     volumes:
