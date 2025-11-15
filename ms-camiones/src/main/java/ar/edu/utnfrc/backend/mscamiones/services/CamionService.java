@@ -1,5 +1,4 @@
-package com.utn.backend.mscamiones.services;
-
+package com.transporte.ms_camiones.services;
 import com.utn.backend.mscamiones.models.Camion;
 import com.utn.backend.mscamiones.repositories.CamionRepository;
 import org.springframework.beans.factory.annotation.Autowired;

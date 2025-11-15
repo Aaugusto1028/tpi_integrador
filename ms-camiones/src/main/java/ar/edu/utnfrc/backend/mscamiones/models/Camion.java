@@ -1,5 +1,5 @@
 // Clase Camion.java
-package com.utn.backend.mscamiones.models;
+package com.transporte.ms_camiones.models;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

@@ -1,5 +1,5 @@
 // Interfaz CamionRepository.java
-package com.utn.backend.mscamiones.repositories;
+package com.transporte.ms_camiones.repositories;
 
 import com.utn.backend.mscamiones.models.Camion;
 import org.springframework.data.jpa.repository.JpaRepository;

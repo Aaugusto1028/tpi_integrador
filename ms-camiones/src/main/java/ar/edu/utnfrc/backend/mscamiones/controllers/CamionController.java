@@ -1,4 +1,4 @@
-package com.utn.backend.mscamiones.controllers;
+package com.transporte.ms_camiones.controllers;
 
 import com.utn.backend.mscamiones.models.Camion;
 import com.utn.backend.mscamiones.services.CamionService;
