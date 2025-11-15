@@ -11,6 +11,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 public class MsSolicitudesApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(MsSolicitudesApplication.class, args);
+        SpringApplication.run(MsSolicitudesApplication.class, args);//Esto hace que se inicie la aplicacion,  es decir, que se levante el servidor
     }
 }
+
