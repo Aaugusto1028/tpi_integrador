@@ -25,13 +25,6 @@ spring:
         # default_schema: solicitudes
 
   # --- Configuración de Seguridad (Keycloak) ---
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          # Esta es la URL de tu Realm en Keycloak
-          # Reemplaza 'tu-realm' por el nombre de tu realm
-          issuer-uri: http://localhost:8180/realms/tu-realm
 
 # --- Configuración de Eureka Client ---
 eureka:
