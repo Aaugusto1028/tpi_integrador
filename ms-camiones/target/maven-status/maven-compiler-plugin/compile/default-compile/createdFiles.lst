@@ -1,3 +1,4 @@
+ar\edu\utnfrc\backend\mscamiones\MsCamionesApplication.class
 ar\edu\utnfrc\backend\mscamiones\models\Camion.class
 ar\edu\utnfrc\backend\mscamiones\repositories\CamionRepository.class
 ar\edu\utnfrc\backend\mscamiones\services\CamionService.class
