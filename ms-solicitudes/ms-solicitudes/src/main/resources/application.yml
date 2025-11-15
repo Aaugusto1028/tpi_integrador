@@ -24,7 +24,7 @@ spring:
         # --- BUENA PRÁCTICA (Schema-por-Servicio) ---
         # Esto hace que este servicio trabaje solo en su "esquema"
         # dentro de la base de datos única.
-        default_schema: solicitudes
+        #default_schema: solicitudes
 
   # --- Configuración de Seguridad (Keycloak) ---
   security:
@@ -41,3 +41,4 @@ eureka:
     # URL donde corre tu servidor Eureka (que configurarás después)
     service-url:
       defaultZone: http://localhost:8761/eureka/
+      enabled: false
