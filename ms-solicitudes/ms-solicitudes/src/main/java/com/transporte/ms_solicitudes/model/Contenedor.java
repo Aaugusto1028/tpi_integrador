@@ -21,18 +21,16 @@ public class Contenedor {
     @Column(precision = 10, scale = 2)
     private BigDecimal volumen;
 
-    // --- RELACIÓN PARA EL HISTORIAL (Esta sí la necesitamos) ---
-    // Esta relación sí es importante para la lógica de negocio del TP
     @OneToMany(mappedBy = "contenedor", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @OrderBy("fecha DESC") 
     private List<EstadoContenedor> historialEstados;
     
-    // ... (método @Transient getEstadoActual() ) ...
-@Transient// No se persiste en la BD
+    @Transient// No se persiste en la BD
     public EstadoContenedor getEstadoActual() {
         if (historialEstados == null || historialEstados.isEmpty()) {
             return null;
         }
         // Como la lista está ordenada por fecha DESC, el estado más nuevo es el primero
-        return historialEstados.get(0); // <-- 1. Faltaba el punto y coma aquí
+        return historialEstados.get(0); // <-- CORRECCIÓN: Faltaba el punto y coma (;)
     }
+}

@@ -28,25 +28,19 @@ public class SolicitudService {
 
     // (Más adelante) @Autowired private RutasFeignClient rutasFeignClient;
     // (Más adelante) @Autowired private CamionesFeignClient camionesFeignClient;
-@Transactional //transaccional significa que si algo falla, se deshacen todos los cambios hechos en la BD
-    public SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO request) { // <-- 1. Faltaba el nombre 'request'
-        
-        // --- QUE ES LO QUE TIENE request? ---
-        // clienteDni, pesoContenedor, volumenContenedor
 
-        // --- QUE ES LO QUE TIENE response?? ---
-        // idSolicitud, nombreCliente, estadoActual, costoEstimado
+    @Transactional //transaccional significa que si algo falla, se deshacen todos los cambios hechos en la BD
+    public SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO request) { // <-- CORRECCIÓN 1: Faltaba el nombre 'request'
         
-        // 2. Usamos la variable 'clienteRepository' (en minúscula)
-        // 3. 'findByDni' devuelve un Optional, hay que "abrirlo"
-        Cliente cliente = clienteRepository.findByDni(request.getClienteDni()) // 4. Usamos los getters del DTO
+        // CORRECCIÓN 2: Usamos 'clienteRepository' (variable) y 'findByDni' devuelve un Optional
+        Cliente cliente = clienteRepository.findByDni(request.getClienteDni()) // <-- CORRECCIÓN 3: Usamos getters del DTO
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado con DNI: " + request.getClienteDni()));
 
-        Contenedor contenedor = new Contenedor(); // 5. Corregido: Contendor -> Contenedor
-        contenedor.setPeso(request.getPesoContenedor()); // 4. Usamos los getters del DTO
-        contenedor.setVolumen(request.getVolumenContenedor()); // 4. Usamos getters y 5. Corregido: serVolumen -> setVolumen
+        Contenedor contenedor = new Contenedor(); // <-- CORRECCIÓN 4: 'Contendor' -> 'Contenedor'
+        contenedor.setPeso(request.getPesoContenedor()); // <-- CORRECCIÓN 3
+        contenedor.setVolumen(request.getVolumenContenedor()); // <-- CORRECCIÓN 3 y 4: 'serVolumen' -> 'setVolumen'
         
-        // 6. Sintaxis de constructor de Java (sin nombres de parámetros)
+        // CORRECCIÓN 5: Sintaxis de constructor de Java (sin nombres de parámetros)
         EstadoContenedor estadoActual = new EstadoContenedor("Borrador", LocalDateTime.now(), contenedor);
         // Asignamos el historial al contenedor
         contenedor.setHistorialEstados(List.of(estadoActual));
@@ -60,7 +54,7 @@ public class SolicitudService {
 
         Solicitud solicitudGuardada = solicitudRepository.save(solicitud);
 
-        // 7. El tipo de variable debe ser SolicitudResponseDTO
+        // CORRECCIÓN 6: El tipo de variable debe ser SolicitudResponseDTO
         SolicitudResponseDTO solicitudResponseDTO = new SolicitudResponseDTO();
         solicitudResponseDTO.setIdSolicitud(solicitudGuardada.getId());
         solicitudResponseDTO.setNombreCliente(cliente.getNombre() + " " + cliente.getApellido()); // Concatenamos
@@ -69,21 +63,35 @@ public class SolicitudService {
 
         return solicitudResponseDTO;
     }
+
     @Transactional(readOnly = true)
     public EstadoDTO consultarEstadoSolicitud(Long idSolicitud) {
-        // 1. Buscamos la solicitud
         Solicitud solicitud = solicitudRepository.findById(idSolicitud)
                 .orElseThrow(() -> new RuntimeException("Solicitud no encontrada: " + idSolicitud));
 
-        // 2. Obtenemos el estado actual usando el método @Transient
         EstadoContenedor estadoActual = solicitud.getContenedor().getEstadoActual();
         
         if (estadoActual == null) {
             throw new RuntimeException("La solicitud no tiene ningún estado registrado.");
         }
-
-        // 3. Devolvemos el DTO de estado
         return new EstadoDTO(estadoActual.getNombre(), estadoActual.getFecha());
     }
 
+
+    @Transactional(readOnly = true)
+    public List<SolicitudResponseDTO> obtenerTodasLasSolicitudes() {
+        // 1. Buscamos todas las solicitudes
+        List<Solicitud> solicitudes = solicitudRepository.findAll();
+        
+        // 2. Las convertimos a DTOs (esto se puede optimizar)
+        return solicitudes.stream().map(solicitud -> {
+            SolicitudResponseDTO dto = new SolicitudResponseDTO();
+            dto.setIdSolicitud(solicitud.getId());
+            dto.setNombreCliente(solicitud.getCliente().getNombre() + " " + solicitud.getCliente().getApellido());
+            dto.setEstadoActual(solicitud.getContenedor().getEstadoActual() != null ? 
+                                solicitud.getContenedor().getEstadoActual().getNombre() : "SIN_ESTADO");
+            dto.setCostoEstimado(solicitud.getCostoEstimado());
+            return dto;
+        }).toList();
+    }
 }
