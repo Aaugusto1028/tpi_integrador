@@ -107,7 +107,6 @@ services:
       SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-
   ms-camiones:
     build:
       context: ./ms-camiones

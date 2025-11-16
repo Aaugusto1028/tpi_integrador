@@ -79,7 +79,7 @@ public class SolicitudService {
         }
         return new EstadoDTO(estadoActual.getNombre(), estadoActual.getFecha());
     }
-
+ 
 
     @Transactional(readOnly = true)
     public List<SolicitudResponseDTO> obtenerTodasLasSolicitudes() {
