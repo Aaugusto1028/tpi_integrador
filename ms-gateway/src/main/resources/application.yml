@@ -1,0 +1,19 @@
+server:
+  port: 8080 # Puerto estándar para API Gateway
+
+spring:
+  application:
+    name: ms-gateway
+  
+  # Configuración de Seguridad para validar el JWT
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Debe coincidir con el realm de Keycloak (el que usa en docker-compose)
+          issuer-uri: http://keycloak:8080/realms/tpi-backend
+
+# Deshabilitamos Eureka para el ejemplo, pero se puede habilitar después.
+eureka:
+  client:
+    enabled: false
