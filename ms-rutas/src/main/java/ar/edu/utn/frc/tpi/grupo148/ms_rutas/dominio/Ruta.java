@@ -23,6 +23,9 @@ public class Ruta {
     @Column(name = "cantidad_depositos")
     private Integer cantidadDepositos;
 
+    @Column(name = "asignada")
+    private Boolean asignada = false;
+
     // Relación: Una Ruta tiene muchos Tramos
     @OneToMany(mappedBy = "ruta", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Tramo> tramos;

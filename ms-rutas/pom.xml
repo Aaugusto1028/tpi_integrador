@@ -9,7 +9,6 @@
 	</parent>
 	<groupId>ar.edu.utn.frc.tpi.grupo148</groupId>
 	<artifactId>ms-rutas</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
 	<name>ms-rutas</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>

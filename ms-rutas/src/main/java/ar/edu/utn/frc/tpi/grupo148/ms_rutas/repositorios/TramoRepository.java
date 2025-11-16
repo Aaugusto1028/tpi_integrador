@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TramoRepository extends JpaRepository<Tramo, Long> {
     // Aquí podés agregar métodos de búsqueda personalizados si los necesitás
+    org.springframework.data.domain.Page<Tramo> findByPatenteCamionAsignadoAndEstadoTramoId(String patente, Long estadoId, org.springframework.data.domain.Pageable pageable);
 }
