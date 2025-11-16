@@ -1,5 +1,8 @@
-/Users/adminmacbook/Desktop/Backend/tpi_integrador/ms-camiones/src/main/java/ar/edu/utnfrc/backend/mscamiones/controllers/CamionController.java
-/Users/adminmacbook/Desktop/Backend/tpi_integrador/ms-camiones/src/main/java/ar/edu/utnfrc/backend/mscamiones/services/CamionService.java
-/Users/adminmacbook/Desktop/Backend/tpi_integrador/ms-camiones/src/main/java/ar/edu/utnfrc/backend/mscamiones/MsCamionesApplication.java
-/Users/adminmacbook/Desktop/Backend/tpi_integrador/ms-camiones/src/main/java/ar/edu/utnfrc/backend/mscamiones/repositories/CamionRepository.java
-/Users/adminmacbook/Desktop/Backend/tpi_integrador/ms-camiones/src/main/java/ar/edu/utnfrc/backend/mscamiones/models/Camion.java
+A:\Cositas de augusto\Facultad\backend\ProyectoIntegrador\tpi_integrador\ms-camiones\src\main\java\ar\edu\utnfrc\backend\mscamiones\config\SecurityConfig.java
+A:\Cositas de augusto\Facultad\backend\ProyectoIntegrador\tpi_integrador\ms-camiones\src\main\java\ar\edu\utnfrc\backend\mscamiones\config\WebClientConfig.java
+A:\Cositas de augusto\Facultad\backend\ProyectoIntegrador\tpi_integrador\ms-camiones\src\main\java\ar\edu\utnfrc\backend\mscamiones\controllers\CamionController.java
+A:\Cositas de augusto\Facultad\backend\ProyectoIntegrador\tpi_integrador\ms-camiones\src\main\java\ar\edu\utnfrc\backend\mscamiones\dtos\TramoDTO.java
+A:\Cositas de augusto\Facultad\backend\ProyectoIntegrador\tpi_integrador\ms-camiones\src\main\java\ar\edu\utnfrc\backend\mscamiones\models\Camion.java
+A:\Cositas de augusto\Facultad\backend\ProyectoIntegrador\tpi_integrador\ms-camiones\src\main\java\ar\edu\utnfrc\backend\mscamiones\MsCamionesApplication.java
+A:\Cositas de augusto\Facultad\backend\ProyectoIntegrador\tpi_integrador\ms-camiones\src\main\java\ar\edu\utnfrc\backend\mscamiones\repositories\CamionRepository.java
+A:\Cositas de augusto\Facultad\backend\ProyectoIntegrador\tpi_integrador\ms-camiones\src\main\java\ar\edu\utnfrc\backend\mscamiones\services\CamionService.java
