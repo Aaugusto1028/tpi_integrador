@@ -1,5 +1,5 @@
 # 1. Empezá con una imagen base que tenga Java 21 (JDK 21)
-FROM openjdk:21-slim
+FROM eclipse-temurin:21-jre-alpine
 
 # 2. Argumento para saber dónde está el .jar (que crea Maven)
 ARG JAR_FILE=target/*.jar

@@ -1,63 +1,60 @@
-version: '3.8'
-
 services:
-  # --- 1. Servidor de Descubrimiento ---
-  eureka-server:
-    build:
-      context: ./eureka-server # Le dice que busque el Dockerfile en la carpeta 'eureka-server'
-    container_name: eureka-server
-    ports:
-      - "8761:8761" # Mapea puerto de tu PC : puerto del contenedor
+  # --- 1. Servidor de Descubrimiento (Comentado temporalmente) ---
+  # eureka-server:
+  #   build:
+  #     context: ./eureka-server
+  #   container_name: eureka-server
+  #   ports:
+  #     - "8761:8761"
 
   # --- 2. Base de Datos (Requerida por el TP) ---
   db:
     image: postgres:15-alpine
     container_name: db_logistica_tpi
     environment:
-      # Usuario y BD deben coincidir con tu application.yml
       POSTGRES_DB: db_logistica
       POSTGRES_USER: tpi_user
       POSTGRES_PASSWORD: 12345678
     ports:
-      - "5432:5432" # El puerto de la BD
+      - "5432:5432"
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data # Guarda los datos en tu PC
+      - ./postgres-data:/var/lib/postgresql/data
 
   # --- 3. Keycloak (Servicio de Seguridad) ---
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0
-    container_name: keycloak_tpi
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: keycloak
+    command: start-dev
+    ports:
+      - "8180:8080"
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    command: start-dev # Solo para desarrollo
-    ports:
-      - "8180:8080" # El puerto interno de Keycloak es 8080
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin123
+    volumes:
+      - keycloak_data:/opt/keycloak/data
 
-  # --- 4. API Gateway ---
-  api-gateway:
-    build:
-      context: ./api-gateway
-    container_name: api-gateway
-    ports:
-      - "8080:8080" # El puerto de entrada principal de tu sistema
-    depends_on:
-      - eureka-server # No arranca hasta que Eureka esté listo
+  # --- 4. API Gateway (Comentado temporalmente) ---
+  # api-gateway:
+  #   build:
+  #     context: ./api-gateway
+  #   container_name: api-gateway
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - eureka-server
 
   # --- 5. Tus Microservicios ---
   ms-solicitudes:
     build:
-      context: ./ms-solicitudes # Busca el Dockerfile en 'ms-solicitudes'
+      context: ./ms-solicitudes
     container_name: ms-solicitudes
     ports:
-      - "8081:8081" # Puerto de este servicio
+      - "8081:8081"
     depends_on:
-      - eureka-server
-      - db     # No arranca hasta que la BD esté lista
+      # - eureka-server # Comentado porque el servicio eureka-server está deshabilitado
+      - db
       - keycloak
     environment:
-      # Sobreescribimos la config de Spring para que apunte a los contenedores
-      # "db", "keycloak" y "eureka-server" son los nombres de los servicios de aquí arriba
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_logistica
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tu-realm
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
@@ -69,7 +66,7 @@ services:
     ports:
       - "8082:8082"
     depends_on:
-      - eureka-server
+      # - eureka-server # Comentado porque el servicio eureka-server está deshabilitado
       - db
       - keycloak
     environment:
@@ -84,10 +81,13 @@ services:
     ports:
       - "8083:8083"
     depends_on:
-      - eureka-server
+      # - eureka-server # Comentado porque el servicio eureka-server está deshabilitado
       - db
       - keycloak
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_logistica
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tu-realm
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+
+volumes:
+  keycloak_data:
