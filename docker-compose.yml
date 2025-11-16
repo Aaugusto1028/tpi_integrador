@@ -30,8 +30,11 @@ services:
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin123
+      - KEYCLOAK_IMPORT=/opt/keycloak/data/import/tpi-backend.json
     volumes:
       - keycloak_data:/opt/keycloak/data
+      # Montamos el archivo local al path de importación del contenedor
+      - ./keycloak-config/tpi-backend.json:/opt/keycloak/data/import/tpi-backend.json
 
   # --- 4. API Gateway (Comentado temporalmente) ---
   # api-gateway:
@@ -56,7 +59,7 @@ services:
       - keycloak
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_logistica
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tu-realm
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
 
   ms-rutas:
@@ -71,7 +74,7 @@ services:
       - keycloak
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_logistica
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tu-realm
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
 
   ms-camiones:
@@ -86,7 +89,7 @@ services:
       - keycloak
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_logistica
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tu-realm
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
 
 volumes:

@@ -1,59 +1,89 @@
 package ar.edu.utnfrc.backend.mscamiones.controllers;
+
+import ar.edu.utnfrc.backend.mscamiones.dtos.TramoDTO; // Import para el DTO
 import ar.edu.utnfrc.backend.mscamiones.models.Camion;
 import ar.edu.utnfrc.backend.mscamiones.services.CamionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication; // Import de Spring Security
+import org.springframework.security.oauth2.jwt.Jwt; // Import para el objeto JWT
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken; // Import para el tipo de token
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
 
-// @RestController: Combina @Controller y @ResponseBody. Indica que devuelve datos JSON/XML directamente.
-@RestController 
-// @RequestMapping: Define la URI base para todos los métodos del controlador.
-@RequestMapping("/camiones") 
+@RestController
+@RequestMapping("/camiones")
 public class CamionController {
 
     @Autowired
-    private CamionService camionService; // Inyección de la dependencia del Servicio
+    private CamionService camionService; // Inyección del Servicio
 
-    // Endpoint: GET /camiones
-    // Roles permitidos: Operador
+    // Endpoint: GET /camiones (Roles: Operador)
     @GetMapping
     public ResponseEntity<List<Camion>> getAllCamiones(
-        @RequestParam Optional<Boolean> disponibilidad) { // Filtro opcional
-
-        // Usar la lógica del servicio para obtener los camiones.
+            @RequestParam(required = false) Optional<Boolean> disponibilidad) {
         List<Camion> camiones = camionService.findAll(disponibilidad);
-
-        // Retorna la lista con código 200 OK
         return ResponseEntity.ok(camiones);
     }
 
-    // Endpoint: POST /camiones
-    // Roles permitidos: Operador
+    // Endpoint: POST /camiones (Roles: Operador)
     @PostMapping
     public ResponseEntity<Camion> createCamion(@RequestBody Camion camion) {
-        // En un proyecto real, la validación de capacidad (Regla 11) iría en el Service.
         Camion nuevoCamion = camionService.save(camion);
-        
-       // Retorna el recurso creado con código 201 Created [cite: 3480]
         return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
     }
-    
-    // Endpoint: GET /camiones/{dominio}
- // Roles permitidos: Operador [cite: 2852]
-    @GetMapping("/{patente}")
-    public ResponseEntity<Camion> getCamionById(@PathVariable String patente) {
+
+    // --- Endpoint: GET /camiones/buscar-apto (Roles: Operador) ---
+    @GetMapping("/buscar-apto")
+    public ResponseEntity<List<Camion>> getCamionesAptos(
+            @RequestParam Double peso,
+            @RequestParam Double volumen) {
         
-        Optional<Camion> camion = camionService.findById(patente);
-        
-        // Si el camión existe, retorna 200 OK. [cite_start]Si no, retorna 404 Not Found [cite: 3480]
-        return camion.map(ResponseEntity::ok)
-                     .orElseGet(() -> ResponseEntity.notFound().build()); 
+        List<Camion> camionesAptos = camionService.findAptos(peso, volumen);
+        return ResponseEntity.ok(camionesAptos);
     }
 
-    // Pendiente: Endpoint de Lógica de negocio para encontrar camiones aptos/libres (consumido por ms-rutas/solicitudes)
-    // Pendiente: Endpoint /transportistas/me/tramos (GET) (requiere seguridad/Keycloak)
+    // --- Endpoint: GET /camiones/transportistas/me/tramos (Roles: Transportista) ---
+    @GetMapping("/transportistas/me/tramos")
+    public ResponseEntity<List<TramoDTO>> getTramosTransportista(Authentication authentication) {
+        
+        if (authentication == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        // 1. Extraer el Token JWT (el token completo es necesario para llamar a ms-rutas)
+        String jwtToken = null;
+        if (authentication instanceof JwtAuthenticationToken) {
+            Jwt jwt = ((JwtAuthenticationToken) authentication).getToken();
+            jwtToken = jwt.getTokenValue();
+        }
+        
+        if (jwtToken == null) {
+             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build(); 
+        }
+
+        // 2. Lógica para obtener la patente del camión del transportista autenticado
+        // NOTA: Esta es una simplificación. En la realidad, usarías authentication.getName() 
+        // para buscar en la BD (o un DTO de Keycloak) la patente asociada al usuario.
+        String patenteCamionAsignado = authentication.getName();
+        if (patenteCamionAsignado == null || patenteCamionAsignado.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        // 3. Llamada al servicio (que usa el token para llamar a ms-rutas)
+        List<TramoDTO> tramos = camionService.getTramosPorTransportista(patenteCamionAsignado, jwtToken);
+
+        return ResponseEntity.ok(tramos);
+    }
+
+    // Endpoint: GET /camiones/{patente} (Roles: Operador)
+    @GetMapping("/{patente}")
+    public ResponseEntity<Camion> getCamionById(@PathVariable String patente) {
+        Optional<Camion> camion = camionService.findById(patente);
+        return camion.map(ResponseEntity::ok)
+                     .orElseGet(() -> ResponseEntity.notFound().build());
+    }
 }
