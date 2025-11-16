@@ -59,6 +59,8 @@ services:
       - keycloak
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_logistica
+      SPRING_DATASOURCE_USERNAME: tpi_user
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
 
@@ -74,6 +76,8 @@ services:
       - keycloak
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_logistica
+      SPRING_DATASOURCE_USERNAME: tpi_user
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
 
@@ -89,6 +93,8 @@ services:
       - keycloak
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_logistica
+      SPRING_DATASOURCE_USERNAME: tpi_user
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
 
