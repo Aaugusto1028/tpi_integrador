@@ -24,7 +24,7 @@ public class CamionController {
     // Endpoint: GET /camiones (Roles: Operador)
     @GetMapping
     public ResponseEntity<List<Camion>> getAllCamiones(
-            @RequestParam Optional<Boolean> disponibilidad) {
+            @RequestParam(required = false) Optional<Boolean> disponibilidad) {
         List<Camion> camiones = camionService.findAll(disponibilidad);
         return ResponseEntity.ok(camiones);
     }
@@ -34,14 +34,6 @@ public class CamionController {
     public ResponseEntity<Camion> createCamion(@RequestBody Camion camion) {
         Camion nuevoCamion = camionService.save(camion);
         return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
-    }
-
-    // Endpoint: GET /camiones/{patente} (Roles: Operador)
-    @GetMapping("/{patente}")
-    public ResponseEntity<Camion> getCamionById(@PathVariable String patente) {
-        Optional<Camion> camion = camionService.findById(patente);
-        return camion.map(ResponseEntity::ok)
-                     .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     // --- Endpoint: GET /camiones/buscar-apto (Roles: Operador) ---
@@ -58,6 +50,10 @@ public class CamionController {
     @GetMapping("/transportistas/me/tramos")
     public ResponseEntity<List<TramoDTO>> getTramosTransportista(Authentication authentication) {
         
+        if (authentication == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
         // 1. Extraer el Token JWT (el token completo es necesario para llamar a ms-rutas)
         String jwtToken = null;
         if (authentication instanceof JwtAuthenticationToken) {
@@ -72,11 +68,22 @@ public class CamionController {
         // 2. Lógica para obtener la patente del camión del transportista autenticado
         // NOTA: Esta es una simplificación. En la realidad, usarías authentication.getName() 
         // para buscar en la BD (o un DTO de Keycloak) la patente asociada al usuario.
-        String patenteCamionAsignado = "ABC-123"; 
+        String patenteCamionAsignado = authentication.getName();
+        if (patenteCamionAsignado == null || patenteCamionAsignado.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
 
         // 3. Llamada al servicio (que usa el token para llamar a ms-rutas)
         List<TramoDTO> tramos = camionService.getTramosPorTransportista(patenteCamionAsignado, jwtToken);
 
         return ResponseEntity.ok(tramos);
+    }
+
+    // Endpoint: GET /camiones/{patente} (Roles: Operador)
+    @GetMapping("/{patente}")
+    public ResponseEntity<Camion> getCamionById(@PathVariable String patente) {
+        Optional<Camion> camion = camionService.findById(patente);
+        return camion.map(ResponseEntity::ok)
+                     .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }
