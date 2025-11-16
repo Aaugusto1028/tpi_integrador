@@ -28,6 +28,7 @@
         <module>ms-solicitudes</module>
         <module>ms-rutas</module>
         <module>ms-camiones</module>
+        <module>ms-gateway</module>
         </modules>
 
     <dependencyManagement>

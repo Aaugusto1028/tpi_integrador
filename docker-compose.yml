@@ -36,15 +36,35 @@ services:
       # Montamos el archivo local al path de importación del contenedor
       - ./keycloak-config/tpi-backend.json:/opt/keycloak/data/import/tpi-backend.json
 
-  # --- 4. API Gateway (Comentado temporalmente) ---
-  # api-gateway:
-  #   build:
-  #     context: ./api-gateway
-  #   container_name: api-gateway
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     - eureka-server
+  # --- 4. API Gateway ---
+  ms-gateway:
+    build:
+      context: ./ms-gateway # Asegúrese que el nombre del directorio sea 'ms-gateway'
+    container_name: ms-gateway
+    ports:
+      - "8080:8080" # El puerto público es 8080, interno también es 8080
+    depends_on:
+      # - eureka-server # Comentado, igual que en los microservicios
+      - keycloak
+      - ms-solicitudes
+      - ms-rutas
+      - ms-camiones
+    environment:
+      # El Gateway necesita saber dónde está Keycloak (usa el nombre del servicio)
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
+      # El Gateway necesita poder acceder a los microservicios
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      # Configuramos el ruteo para que use el nombre de servicio de Docker-Compose
+      # Nota: En este caso, Spring Cloud Gateway usará el nombre del servicio directamente:
+      # - ms-solicitudes:8081
+      # - ms-rutas:8082
+      # - ms-camiones:8083
+
+  # --- 5. Tus Microservicios (cambia el mapeo de puertos locales para no colisionar) ---
+  # Nota: Ya que el Gateway usa 8080, y sus microservicios ya están configurados
+  # en 8081, 8082 y 8083, no hay colisión, pero es buena práctica no exponer
+  # los puertos internos de los MS al exterior, solo el Gateway.
+  # Dejo la configuración actual para que pueda acceder a ellos localmente si lo necesita.
 
   # --- 5. Tus Microservicios ---
   ms-solicitudes:
