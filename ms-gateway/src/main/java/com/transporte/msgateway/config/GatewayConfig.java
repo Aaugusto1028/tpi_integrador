@@ -2,18 +2,20 @@ package com.transporte.msgateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.web.server.SecurityFilterChain;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
+import org.springframework.core.convert.converter.Converter;
+import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebFluxSecurity // Necesario para seguridad en Spring WebFlux (usado por Gateway)
@@ -43,10 +45,10 @@ public class GatewayConfig {
             .build();
     }
     
-    // --- 2. Configuración de Seguridad (SecurityFilterChain) ---
+    // --- 2. Configuración de Seguridad (SecurityWebFilterChain) ---
 
     @Bean
-    public SecurityFilterChain securityFilterChain(ServerHttpSecurity http) {
+    public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http) {
         http
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             .authorizeExchange(exchanges -> exchanges
@@ -57,27 +59,30 @@ public class GatewayConfig {
             )
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwtConfigurer -> jwtConfigurer
-                    .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                    .jwtAuthenticationConverter(new JwtReactiveAuthenticationConverter())
                 )
             );
         return http.build();
     }
     
-    // --- 3. Extractor de Roles de Keycloak (Mismo que en ms-camiones) ---
+    // --- 3. Extractor de Roles de Keycloak para WebFlux ---
 
-    private JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
+    private static class JwtReactiveAuthenticationConverter implements Converter<Jwt, Mono<? extends org.springframework.security.authentication.AbstractAuthenticationToken>> {
         
-        // Define cómo extraer las autoridades (roles) del JWT
-        jwtConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
+        @Override
+        public Mono<? extends org.springframework.security.authentication.AbstractAuthenticationToken> convert(Jwt jwt) {
             Map<String, Collection<String>> realmAccess = jwt.getClaim("realm_access");
-            Collection<String> roles = realmAccess.get("roles");
+            Collection<String> roles = realmAccess != null ? realmAccess.get("roles") : new ArrayList<>();
             
-            // Mapea los roles de Keycloak a las autoridades de Spring Security (ej: ROLE_Operador)
-            return roles.stream()
-                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
-                        .collect(Collectors.toList());
-        });
-        return jwtConverter;
+            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+            if (roles != null) {
+                for (String role : roles) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
+                }
+            }
+            
+            var token = new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(jwt, authorities);
+            return Mono.just(token);
+        }
     }
 }

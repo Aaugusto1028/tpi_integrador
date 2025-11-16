@@ -1,0 +1,67 @@
+############################################################
+# .gitignore for ms-gateway (Spring Boot + Maven + Docker)
+############################################################
+
+# Maven / build
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Package files
+*.jar
+*.war
+*.ear
+
+# Logs and runtime files
+logs/
+*.log
+*.pid
+
+# IDEs and editors
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Spring Boot / local overrides
+/.spring-boot-devtools
+*.spring-devtools
+application-*.local.yml
+application-*.local.*
+
+# Environment files
+.env
+.env.*
+docker-compose.override.yml
+
+# Docker
+# ignore local images or intermediate build files if any
+docker-compose.*.local
+
+# Keystores and credentials
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# Generated files
+generated/
+
+# Misc
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Keep HELP.md tracked (project specific) if you want
+# HELP.md
+

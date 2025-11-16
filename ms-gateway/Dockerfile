@@ -4,14 +4,12 @@ FROM eclipse-temurin:21-jre-alpine
 # Define el directorio de trabajo.
 WORKDIR /app
 
-# Argumento para el JAR de Maven
-ARG JAR_FILE=target/ms-gateway-*.jar
-
-# Copia el .jar
-COPY ${JAR_FILE} app.jar
+# Copiamos el JAR explícito generado por Maven (menos propenso a globs ambiguos)
+# Asegúrate de ejecutar `mvn package` antes de construir la imagen si no usas multi-stage.
+COPY target/ms-gateway-1.0.0-SNAPSHOT.jar /app/app.jar
 
 # Documenta el puerto (8080)
 EXPOSE 8080
 
 # Comando que se ejecuta al iniciar el contenedor.
-ENTRYPOINT ["java", "-jar", "/app.jar"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
