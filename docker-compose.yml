@@ -21,19 +21,33 @@ services:
       - ./postgres-data:/var/lib/postgresql/data
 
   # --- 3. Keycloak (Servicio de Seguridad) ---
+# --- 3. Keycloak (Servicio de Seguridad) ---
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.3
     container_name: keycloak
-    command: start-dev
+    command: start  # <-- CAMBIO 1: De 'start-dev' a 'start'
     ports:
       - "8180:8080"
     environment:
+      # Credenciales de admin (las dejamos, esto crea el admin en el realm 'master')
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin123
+      
+      # --- CAMBIO 2: Variables para conectar a Postgres ---
+      - KC_DB=postgres
+      - KC_DB_URL_HOST=db
+      - KC_DB_URL_DATABASE=db_logistica
+      - KC_DB_USERNAME=tpi_user
+      - KC_DB_PASSWORD=12345678
+      - KC_DB_SCHEMA=public
+      - KC_HOSTNAME_STRICT=false
     volumes:
       - keycloak_data:/opt/keycloak/data
-      - ./keycloak-config:/opt/keycloak/data/import  # <-- LÍNEA AÑADIDA
- 
+      - ./keycloak-config:/opt/keycloak/data/import
+    
+    # --- CAMBIO 3: Asegurarnos de que la DB arranque primero ---
+    depends_on:
+      - db
   # --- 4. API Gateway (Comentado temporalmente) ---
   # api-gateway:
   #   build:
