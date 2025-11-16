@@ -12,12 +12,15 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.0</version>
+        <version>3.4.0</version>
         <relativePath/> </parent>
 
 <properties>
     <java.version>21</java.version>
     <spring-cloud.version>2024.0.0</spring-cloud.version>
+    <!-- Disable Spring Cloud compatibility verifier to allow Spring Boot 3.5 during development
+         (alternatively set Spring Boot to a 3.4.x version compatible with the release train) -->
+    <spring.cloud.compatibility-verifier.enabled>false</spring.cloud.compatibility-verifier.enabled>
 </properties>
 
     <modules>

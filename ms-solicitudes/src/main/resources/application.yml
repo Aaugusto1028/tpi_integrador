@@ -1,6 +1,6 @@
 # Cada servicio debe tener un puerto único
 server:
-  port: 8081
+  port: 8083
 
 # Nombre del servicio (para que Eureka lo encuentre)
 spring:
