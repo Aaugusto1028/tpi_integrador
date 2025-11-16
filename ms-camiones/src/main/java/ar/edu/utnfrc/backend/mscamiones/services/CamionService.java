@@ -1,7 +1,7 @@
-package com.utn.backend.mscamiones.services;
+package ar.edu.utnfrc.backend.mscamiones.services;
 
-import com.utn.backend.mscamiones.models.Camion;
-import com.utn.backend.mscamiones.repositories.CamionRepository;
+import ar.edu.utnfrc.backend.mscamiones.models.Camion;
+import ar.edu.utnfrc.backend.mscamiones.repositories.CamionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
