@@ -50,4 +50,21 @@ public class TramoController {
         Tramo tramo = rutaService.finalizarTramo(id);
         return ResponseEntity.ok(tramo);
     }
+
+    /**
+     * Endpoint para que un transportista liste sus tramos asignados (paginado).
+     * Parámetros: patenteCamion (requerido), estadoId (opcional), page, size
+     */
+    @GetMapping
+    @PreAuthorize("hasRole('TRANSPORTISTA')")
+    public ResponseEntity<org.springframework.data.domain.Page<Tramo>> listarTramosPorPatente(
+            @RequestParam(name = "patenteCamion") String patente,
+            @RequestParam(name = "estadoId", required = false) Long estadoId,
+            @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+            @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        Long estadoFiltro = estadoId != null ? estadoId : 2L; // por defecto 2 = ASIGNADO
+        org.springframework.data.domain.Page<Tramo> resultado = rutaService.obtenerTramosPorPatenteYEstado(patente, estadoFiltro, pageable);
+        return ResponseEntity.ok(resultado);
+    }
 }

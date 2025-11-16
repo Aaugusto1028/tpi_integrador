@@ -267,4 +267,30 @@ public class RutaServiceImpl implements RutaService {
         return estadoTramoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Estado de tramo no encontrado: " + id));
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<Tramo> obtenerTramosPorPatenteYEstado(String patente, Long estadoId, org.springframework.data.domain.Pageable pageable) {
+        return tramoRepository.findByPatenteCamionAsignadoAndEstadoTramoId(patente, estadoId, pageable);
+    }
+
+    @Override
+    @Transactional
+    public Ruta asignarRuta(Long idRuta) {
+        Ruta ruta = rutaRepository.findById(idRuta)
+                .orElseThrow(() -> new EntityNotFoundException("Ruta no encontrada: " + idRuta));
+
+        ruta.setAsignada(true);
+        Ruta guardada = rutaRepository.save(ruta);
+
+        // Intentamos notificar a ms-solicitudes para confirmar la ruta (best-effort)
+        try {
+            String url = String.format("http://ms-solicitudes:8082/solicitudes/%d/confirmar-ruta", ruta.getIdSolicitud());
+            webClientBuilder.build().post().uri(url).retrieve().bodyToMono(Void.class).block(Duration.ofSeconds(5));
+        } catch (Exception ignored) {
+            // best-effort: si falla la notificación no interrumpimos el flujo
+        }
+
+        return guardada;
+    }
 }

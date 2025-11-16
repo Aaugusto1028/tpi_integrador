@@ -22,6 +22,9 @@ public class RutaController {
     @Autowired
     private RutaRepository rutaRepository;
 
+    @Autowired
+    private org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder;
+
     /**
      * Endpoint para crear una nueva ruta tentativa con todos sus tramos.
      * Calcula distancias y costos estimados.
@@ -62,6 +65,42 @@ public class RutaController {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.ok(rutas);
+    }
+
+    /**
+     * Obtener detalle de una ruta por id
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('OPERADOR')")
+    public ResponseEntity<Ruta> obtenerRutaPorId(@PathVariable Long id) {
+        return rutaRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Marcar una ruta como asignada (OPERADOR).
+     */
+    @PostMapping("/{id}/asignar")
+    @PreAuthorize("hasRole('OPERADOR')")
+    public ResponseEntity<Ruta> asignarRuta(@PathVariable Long id) {
+        Ruta rutaAsignada = rutaService.asignarRuta(id);
+        return ResponseEntity.ok(rutaAsignada);
+    }
+
+    /**
+     * Proxy simple para listar contenedores pendientes desde ms-solicitudes.
+     */
+    @GetMapping("/contenedores-pendientes")
+    @PreAuthorize("hasRole('OPERADOR')")
+    public ResponseEntity<Object> contenedoresPendientes() {
+        try {
+            String url = "http://ms-solicitudes:8082/contenedores/pendientes";
+            Object cuerpo = webClientBuilder.build().get().uri(url).retrieve().bodyToMono(Object.class).block(java.time.Duration.ofSeconds(5));
+            return ResponseEntity.ok(cuerpo);
+        } catch (Exception e) {
+            return ResponseEntity.status(502).body("No se pudo obtener contenedores pendientes: " + e.getMessage());
+        }
     }
 
     // Aquí podrías agregar endpoints GET para consultar rutas

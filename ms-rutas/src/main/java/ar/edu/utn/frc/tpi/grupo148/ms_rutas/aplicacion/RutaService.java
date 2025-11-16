@@ -14,4 +14,10 @@ public interface RutaService {
     Tramo iniciarTramo(Long idTramo);
 
     Tramo finalizarTramo(Long idTramo);
+
+    // Obtener tramos asignados a una patente y con un estado (paginado)
+    org.springframework.data.domain.Page<ar.edu.utn.frc.tpi.grupo148.ms_rutas.dominio.Tramo> obtenerTramosPorPatenteYEstado(String patente, Long estadoId, org.springframework.data.domain.Pageable pageable);
+
+    // Marcar una ruta como asignada (y notificar a ms-solicitudes si corresponde)
+    ar.edu.utn.frc.tpi.grupo148.ms_rutas.dominio.Ruta asignarRuta(Long idRuta);
 }
