@@ -2,7 +2,7 @@
 server:
   port: 8083
 
-# Nombre del servicio (para que Eureka lo encuentre)
+# Nombre del servicio
 spring:
   application:
     name: ms-solicitudes
@@ -24,7 +24,8 @@ spring:
         # Eliminamos esta línea para usar el schema 'public' por defecto
         # default_schema: solicitudes
 
-  # --- Configuración de Seguridad (Keycloak) ---
+# --- Configuración de Seguridad (Keycloak) ---
+# Las propiedades de 'issuer-uri' se configurarán en docker-compose
 
 # --- Configuración de Eureka Client ---
 eureka:
@@ -32,5 +33,5 @@ eureka:
     # URL donde corre tu servidor Eureka (que configurarás después)
     service-url:
       defaultZone: http://localhost:8761/eureka/
-    # Agregamos esta línea para poder probar el servicio solo
+    # CAMBIO: Confirmamos que está deshabilitado como pediste.
     enabled: false

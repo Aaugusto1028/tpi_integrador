@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional; // <-- IMPORTADO
 
 @Repository
 public interface SolicitudRepository extends JpaRepository<Solicitud, Long> {
@@ -14,4 +15,9 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Long> {
 
     // Buscar por estado (ej: "Borrador", "Programada", "Entregada")
     List<Solicitud> findByEstado(String estado);
+
+    // --- AÑADIDO ---
+    // Método para encontrar la solicitud asociada a un contenedor
+    Optional<Solicitud> findByContenedor_Id(Long contenedorId);
+    // --- FIN AÑADIDO ---
 }

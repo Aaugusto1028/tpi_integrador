@@ -3,7 +3,8 @@ package com.transporte.ms_solicitudes.controller;
 import com.transporte.ms_solicitudes.dto.SeguimientoDTO;
 import com.transporte.ms_solicitudes.dto.SolicitudRequestDTO;
 import com.transporte.ms_solicitudes.dto.SolicitudResponseDTO;
-import com.transporte.ms_solicitudes.dto.EstadoDTO; // <-- IMPORTACIÓN AÑADIDA
+import com.transporte.ms_solicitudes.dto.EstadoDTO; 
+import com.transporte.ms_solicitudes.dto.FinalizarSolicitudDTO; // <-- IMPORTADO
 import com.transporte.ms_solicitudes.service.SolicitudService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -28,8 +29,10 @@ public class SolicitudController {
 
     @GetMapping
     @PreAuthorize("hasRole('OPERADOR')")
-    public ResponseEntity<List<SolicitudResponseDTO>> listarSolicitudes() {
-        return ResponseEntity.ok(solicitudService.listarSolicitudes());
+    public ResponseEntity<List<SolicitudResponseDTO>> listarSolicitudes(
+            // CAMBIO 1: Aceptamos un parámetro de filtro opcional
+            @RequestParam(required = false) String estado) {
+        return ResponseEntity.ok(solicitudService.listarSolicitudes(estado)); // CAMBIO 2: Pasamos el filtro
     }
 
     @GetMapping("/{id}")
@@ -50,12 +53,15 @@ public class SolicitudController {
      */
     @PutMapping("/{id}/finalizar")
     @PreAuthorize("hasRole('OPERADOR')")
-    public ResponseEntity<SolicitudResponseDTO> finalizarSolicitud(@PathVariable Long id) {
-        SolicitudResponseDTO solicitud = solicitudService.finalizarSolicitud(id);
+    public ResponseEntity<SolicitudResponseDTO> finalizarSolicitud(
+            @PathVariable Long id,
+            // CAMBIO 3: Aceptamos los datos reales en el Body
+            @RequestBody FinalizarSolicitudDTO dto) {
+        SolicitudResponseDTO solicitud = solicitudService.finalizarSolicitud(id, dto); // CAMBIO 4: Pasamos el DTO
         return ResponseEntity.ok(solicitud);
     }
 
-    // --- CÓDIGO AÑADIDO ---
+    // --- CÓDIGO AÑADIDO --- (Este ya lo tenías, se queda igual)
     /**
      * Endpoint interno para que otros servicios (como ms-rutas)
      * actualicen el estado del contenedor.
