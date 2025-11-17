@@ -1,6 +1,7 @@
 package ar.edu.utnfrc.backend.mscamiones.controllers;
 
 import ar.edu.utnfrc.backend.mscamiones.dtos.TramoDTO; // Import para el DTO
+import ar.edu.utnfrc.backend.mscamiones.dtos.PromediosDTO;
 import ar.edu.utnfrc.backend.mscamiones.models.Camion;
 import ar.edu.utnfrc.backend.mscamiones.services.CamionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,5 +86,15 @@ public class CamionController {
         Optional<Camion> camion = camionService.findById(patente);
         return camion.map(ResponseEntity::ok)
                      .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // Endpoint: GET /camiones/promedios?peso=...&volumen=...
+    @GetMapping("/promedios")
+    public ResponseEntity<PromediosDTO> getPromedios(
+            @RequestParam("peso") Double peso,
+            @RequestParam("volumen") Double volumen) {
+
+        PromediosDTO promedios = camionService.obtenerPromedios(peso, volumen);
+        return ResponseEntity.ok(promedios);
     }
 }

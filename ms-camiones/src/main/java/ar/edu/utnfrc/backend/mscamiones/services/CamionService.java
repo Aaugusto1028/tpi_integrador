@@ -1,6 +1,7 @@
 package ar.edu.utnfrc.backend.mscamiones.services;
 
 import ar.edu.utnfrc.backend.mscamiones.dtos.TramoDTO; // Nuevo: Importar el DTO creado
+import ar.edu.utnfrc.backend.mscamiones.dtos.PromediosDTO;
 import ar.edu.utnfrc.backend.mscamiones.models.Camion;
 import ar.edu.utnfrc.backend.mscamiones.repositories.CamionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,4 +94,43 @@ public class CamionService {
                 .bodyToMono(new ParameterizedTypeReference<List<TramoDTO>>() {})
                 .block(); // Bloquea la ejecución hasta obtener el resultado (API síncrona)
     }
+
+            /**
+             * Calcula y devuelve los promedios (costo y consumo por km) entre los camiones
+             * disponibles que cumplen con la capacidad mínima requerida.
+             * @param pesoRequerido peso mínimo requerido
+             * @param volumenRequerido volumen mínimo requerido
+             * @return PromediosDTO con los valores (BigDecimal). Si no hay camiones aptos, devuelve ceros.
+             */
+            public PromediosDTO obtenerPromedios(Double pesoRequerido, Double volumenRequerido) {
+            List<Camion> disponibles = repository.findByDisponibilidad(true);
+
+            List<Camion> aptos = disponibles.stream()
+                .filter(c -> c.getCapacidadPeso() != null && c.getCapacidadPeso() >= pesoRequerido)
+                .filter(c -> c.getCapacidadVolumen() != null && c.getCapacidadVolumen() >= volumenRequerido)
+                .collect(Collectors.toList());
+
+            if (aptos.isEmpty()) {
+                return new PromediosDTO(java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO);
+            }
+
+            java.math.BigDecimal sumaCosto = aptos.stream()
+                .map(Camion::getCostoPorKm)
+                .filter(java.util.Objects::nonNull)
+                .map(d -> java.math.BigDecimal.valueOf(d))
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
+            java.math.BigDecimal sumaConsumo = aptos.stream()
+                .map(Camion::getConsumoCombustibleKm)
+                .filter(java.util.Objects::nonNull)
+                .map(d -> java.math.BigDecimal.valueOf(d))
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
+            java.math.BigDecimal count = java.math.BigDecimal.valueOf(aptos.size());
+
+            java.math.BigDecimal promedioCosto = sumaCosto.divide(count, 6, java.math.RoundingMode.HALF_UP);
+            java.math.BigDecimal promedioConsumo = sumaConsumo.divide(count, 6, java.math.RoundingMode.HALF_UP);
+
+            return new PromediosDTO(promedioCosto, promedioConsumo);
+            }
 }
