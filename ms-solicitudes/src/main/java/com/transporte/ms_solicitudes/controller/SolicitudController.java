@@ -1,6 +1,6 @@
 package com.transporte.ms_solicitudes.controller;
 
-import com.transporte.ms_solicitudes.dto.EstadoDTO;
+import com.transporte.ms_solicitudes.dto.SeguimientoDTO;
 import com.transporte.ms_solicitudes.dto.SolicitudRequestDTO;
 import com.transporte.ms_solicitudes.dto.SolicitudResponseDTO;
 import com.transporte.ms_solicitudes.service.SolicitudService;
@@ -29,8 +29,8 @@ public class SolicitudController {
     // Rol: Cliente
     @GetMapping("/{id}/estado")
     @PreAuthorize("hasRole('CLIENTE')") // <-- ¡NUEVO! Solo el rol CLIENTE puede ver su estado
-    public ResponseEntity<EstadoDTO> consultarEstado(@PathVariable Long id) {
-        EstadoDTO estado = solicitudService.consultarEstadoSolicitud(id);
-        return ResponseEntity.ok(estado);
+    public ResponseEntity<SeguimientoDTO> consultarEstado(@PathVariable Long id) {
+        SeguimientoDTO seguimiento = solicitudService.consultarEstadoSolicitud(id);
+        return ResponseEntity.ok(seguimiento);
     }
 }

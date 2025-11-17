@@ -20,8 +20,26 @@ public class Solicitud {
     @Column(name = "costo_final", precision = 12, scale = 2)
     private BigDecimal costoFinal;
 
-    @Column(name = "tiempo_real", length = 50)
-    private String tiempoReal;
+    @Column(name = "tiempo_real", precision = 12, scale = 2)
+    private java.math.BigDecimal tiempoReal;
+
+    @Column(name = "tiempo_estimado", precision = 12, scale = 2)
+    private java.math.BigDecimal tiempoEstimado;
+
+    @Column(name = "estado", length = 50)
+    private String estado;
+
+    @Column(name = "origen_latitud", precision = 10, scale = 6)
+    private java.math.BigDecimal origenLatitud;
+
+    @Column(name = "origen_longitud", precision = 10, scale = 6)
+    private java.math.BigDecimal origenLongitud;
+
+    @Column(name = "destino_latitud", precision = 10, scale = 6)
+    private java.math.BigDecimal destinoLatitud;
+
+    @Column(name = "destino_longitud", precision = 10, scale = 6)
+    private java.math.BigDecimal destinoLongitud;
 
     // --- RELACIONES OBLIGATORIAS (LADO DUEÑO DE LA FK) ---
 

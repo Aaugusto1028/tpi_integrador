@@ -11,4 +11,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Long> {
 
     // Método para buscar todas las solicitudes de un cliente
     List<Solicitud> findByCliente_Id(Long clienteId);
+
+    // Buscar por estado (ej: "Borrador", "Programada", "Entregada")
+    List<Solicitud> findByEstado(String estado);
 }
