@@ -5,13 +5,9 @@ import java.math.BigDecimal;
 
 @Data
 public class SolicitudResponseDTO {
-    // Datos del ejemplo de entrega inicial
-    private Long idSolicitud;
-    private String estadoActual;
+    private Long id;
+    private String estado;
     private BigDecimal costoEstimado;
-    
-    // Datos útiles adicionales
-    private String nombreCliente;
     private BigDecimal costoFinal;
     private BigDecimal tiempoEstimado;
     private BigDecimal tiempoReal;

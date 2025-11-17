@@ -15,10 +15,19 @@ public class ClienteService {
     @Transactional(readOnly = true)
     public Cliente buscarClientePorId(Long id) {
         if (id == null) {
-        throw new IllegalArgumentException("El ID del cliente no puede ser nulo");
-    }
+            throw new IllegalArgumentException("El ID del cliente no puede ser nulo");
+        }
         return clienteRepository.findById(id)   
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado con ID: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public Cliente buscarClientePorDni(String dni) {
+        if (dni == null || dni.isBlank()) {
+            throw new IllegalArgumentException("El DNI del cliente no puede ser vacío");
+        }
+        return clienteRepository.findByDni(dni)
+                .orElseThrow(() -> new RuntimeException("Cliente no encontrado con DNI: " + dni));
     }
 
     @Transactional

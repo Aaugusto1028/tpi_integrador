@@ -1,60 +1,46 @@
 package com.transporte.ms_solicitudes.client;
 
-import com.transporte.ms_solicitudes.dto.CoordenadasRequest;
-import com.transporte.ms_solicitudes.dto.DistanciaResponse;
-import com.transporte.ms_solicitudes.dto.SeguimientoDTO;
-import com.transporte.ms_solicitudes.dto.RutaFinalizadaDTO;
-import com.transporte.ms_solicitudes.dto.TarifaDTO; // Asumimos que existe este DTO en ms-rutas
+import com.transporte.ms_solicitudes.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
-@Service
+@Component
 public class RutasWebClient {
 
     @Autowired
     private WebClient webClient;
 
-    /**
-     * Llama a ms-rutas/rutas/distancia
-     * (Basado en ms-rutas/infraestructura/controladores/RutaController.java)
-     */
-    public Mono<DistanciaResponse> obtenerDistanciaEstimada(CoordenadasRequest request) {
+    private static final String MS_RUTAS_URL = "http://ms-rutas:8081/rutas";
+
+    public DistanciaResponse obtenerDistancia(double lat1, double lon1, double lat2, double lon2) {
+        CoordenadasRequest request = new CoordenadasRequest(
+                new java.math.BigDecimal(lat1),
+                new java.math.BigDecimal(lon1),
+                new java.math.BigDecimal(lat2),
+                new java.math.BigDecimal(lon2)
+        );
         return webClient.post()
-                .uri("http://ms-rutas/rutas/distancia")
-                .bodyValue(request) // Enviamos el DTO en el body
+                .uri(MS_RUTAS_URL + "/distancia")
+                .bodyValue(request)
                 .retrieve()
-                .bodyToMono(DistanciaResponse.class);
+                .bodyToMono(DistanciaResponse.class)
+                .block();
     }
-    
-    /**
-     * Llama a ms-rutas/tarifas/vigente (Endpoint Hipotético)
-     * Necesitamos el precio del combustible (Regla 64)
-     */
-    public Mono<TarifaDTO> obtenerTarifaVigente() {
-        // Debes crear este endpoint en ms-rutas que devuelva las tarifas actuales,
-        // incluyendo el precio_litro de la tabla TARIFAS.
+
+    public TarifaDTO obtenerTarifas() {
         return webClient.get()
-                .uri("http://ms-rutas/tarifas/vigente") // Endpoint de ejemplo
+                .uri(MS_RUTAS_URL + "/tarifas")
                 .retrieve()
-                .bodyToMono(TarifaDTO.class);
+                .bodyToMono(TarifaDTO.class)
+                .block();
     }
 
-
-    // Métodos que implementaremos después (basados en tu RutaController):
-    
-    public Mono<SeguimientoDTO> obtenerUbicacionActual(Long solicitudId) {
-         return webClient.get()
-                .uri("http://ms-rutas/rutas/" + solicitudId + "/ubicacion")
-                .retrieve()
-                .bodyToMono(SeguimientoDTO.class);
-    }
-
-    public Mono<RutaFinalizadaDTO> obtenerRutaFinalizada(Long solicitudId) {
+    public String obtenerUbicacionActual(Long idContenedor) {
         return webClient.get()
-                .uri("http://ms-rutas/rutas/" + solicitudId + "/finalizada")
+                .uri(MS_RUTAS_URL + "/contenedores/{id}/ubicacion", idContenedor)
                 .retrieve()
-                .bodyToMono(RutaFinalizadaDTO.class);
+                .bodyToMono(String.class)
+                .block();
     }
 }

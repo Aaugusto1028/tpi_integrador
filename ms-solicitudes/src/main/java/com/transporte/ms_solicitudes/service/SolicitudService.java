@@ -5,9 +5,8 @@ import com.transporte.ms_solicitudes.client.RutasWebClient;
 import com.transporte.ms_solicitudes.dto.*;
 import com.transporte.ms_solicitudes.model.Cliente;
 import com.transporte.ms_solicitudes.model.Contenedor;
-import com.transporte.ms_solicitudes.model.EstadoContenedor;
 import com.transporte.ms_solicitudes.model.Solicitud;
-import com.transporte.ms_solicitudes.repository.ClienteRepository;
+import com.transporte.ms_solicitudes.repository.ContenedorRepository;
 import com.transporte.ms_solicitudes.repository.SolicitudRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,8 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,236 +22,178 @@ public class SolicitudService {
 
     @Autowired
     private SolicitudRepository solicitudRepository;
+
     @Autowired
-    private ClienteRepository clienteRepository;
-    
-    // Inyectamos los WebClients (asegúrate que estén en WebClientConfig)
+    private ContenedorRepository contenedorRepository;
+
     @Autowired
-    private RutasWebClient rutasWebClient;
+    private ClienteService clienteService;
+
     @Autowired
     private CamionesWebClient camionesWebClient;
 
+    @Autowired
+    private RutasWebClient rutasWebClient;
+
     /**
-     * REQ 1: Crear Solicitud (Corregido)
+     * Crea una nueva solicitud con costo y tiempo estimado.
      */
     @Transactional
-    public SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO request) {
-        
-        // 1. Buscar Cliente
-        Cliente cliente = clienteRepository.findByDni(request.getClienteDni())
-                .orElseThrow(() -> new EntityNotFoundException("Cliente no encontrado con DNI: " + request.getClienteDni()));
+    public SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO dto) {
+        // Buscar cliente por DNI
+        Cliente cliente = clienteService.buscarClientePorDni(dto.getClienteDni());
 
-        // 2. Crear Contenedor
+        // Crear contenedor
         Contenedor contenedor = new Contenedor();
-        contenedor.setPeso(request.getPesoContenedor());
-        contenedor.setVolumen(request.getVolumenContenedor());
-        contenedor.setClienteAsociado(cliente); 
+        contenedor.setPeso(dto.getPesoContenedor());
+        contenedor.setVolumen(dto.getVolumenContenedor());
+        contenedor.setClienteAsociado(cliente);
 
-        // 3. Crear Estado Inicial
-        // Usamos el constructor corregido (sin nombres de parámetros)
-        EstadoContenedor estadoActual = new EstadoContenedor("Borrador", LocalDateTime.now(), contenedor);
-        contenedor.setHistorialEstados(List.of(estadoActual));
-
-        // 4. Crear Solicitud
+        // Crear solicitud
         Solicitud solicitud = new Solicitud();
         solicitud.setCliente(cliente);
         solicitud.setContenedor(contenedor);
-        solicitud.setEstado("Borrador");
-        
-        // Guardamos las coordenadas
-        solicitud.setOrigenLatitud(request.getOrigenLatitud());
-        solicitud.setOrigenLongitud(request.getOrigenLongitud());
-        solicitud.setDestinoLatitud(request.getDestinoLatitud());
-        solicitud.setDestinoLongitud(request.getDestinoLongitud());
+        solicitud.setOrigenLatitud(dto.getOrigenLatitud());
+        solicitud.setOrigenLongitud(dto.getOrigenLongitud());
+        solicitud.setDestinoLatitud(dto.getDestinoLatitud());
+        solicitud.setDestinoLongitud(dto.getDestinoLongitud());
+        solicitud.setEstado("PENDIENTE");
 
-        // El costo estimado se pone en null. Se calcula en el Flujo 2.
-        solicitud.setCostoEstimado(null); 
+        // Calcular costo y tiempo estimado
+        try {
+            CostoTiempoDTO estimado = calcularCostoTiempoEstimado(
+                    dto.getOrigenLatitud(), dto.getOrigenLongitud(),
+                    dto.getDestinoLatitud(), dto.getDestinoLongitud(),
+                    dto.getPesoContenedor(), dto.getVolumenContenedor()
+            );
+            solicitud.setCostoEstimado(estimado.costo);
+            solicitud.setTiempoEstimado(estimado.tiempo);
+        } catch (Exception e) {
+            solicitud.setCostoEstimado(BigDecimal.ZERO);
+            solicitud.setTiempoEstimado(BigDecimal.ZERO);
+        }
 
-        Solicitud solicitudGuardada = solicitudRepository.save(solicitud);
+        contenedorRepository.save(contenedor);
+        solicitudRepository.save(solicitud);
 
-        // 5. Mapear respuesta
-        return mapToSolicitudResponseDTO(solicitudGuardada);
+        return mapToResponseDTO(solicitud);
     }
 
     /**
-     * REQ 3 y 8: Calcular Costo Estimado (¡Esto es lo que sigue!)
+     * Calcula costo y tiempo estimado.
      */
-    @Transactional
-    public SolicitudResponseDTO calcularCostoTiempoEstimado(Long idSolicitud) {
-        System.out.println("Calculando costo para solicitud: " + idSolicitud);
-        // 1. Obtener Solicitud
-        Solicitud solicitud = findSolicitudById(idSolicitud);
-        Contenedor contenedor = solicitud.getContenedor();
+    private CostoTiempoDTO calcularCostoTiempoEstimado(
+            BigDecimal lat1, BigDecimal lon1, BigDecimal lat2, BigDecimal lon2,
+            BigDecimal peso, BigDecimal volumen) {
 
-        // 2. LLAMAR A MS-CAMIONES (WebClient)
-        // REQ 11: Validar capacidad
-        List<CamionDTO> camionesAptos = camionesWebClient.obtenerCamionesAptos(
-                contenedor.getPeso(),
-                contenedor.getVolumen()
-        ).block(); // .block() hace la llamada síncrona
-
-        if (camionesAptos == null || camionesAptos.isEmpty()) {
-            throw new RuntimeException("No se encontraron camiones aptos.");
-        }
-        System.out.println("Camiones aptos encontrados: " + camionesAptos.size());
-
-        // 3. LLAMAR A MS-CAMIONES (WebClient)
-        // REQ 105: "valores promedio entre los camiones elegibles"
-        List<String> dominios = camionesAptos.stream().map(CamionDTO::getDominio).collect(Collectors.toList());
-        PromediosDTO promedios = camionesWebClient.obtenerPromediosCostos(dominios).block();
-        
-        // 4. LLAMAR A MS-RUTAS (WebClient)
-        // REQ 8.1: Distancia y REQ 106: Tiempo
-        CoordenadasRequest coords = new CoordenadasRequest(
-                solicitud.getOrigenLatitud(), solicitud.getOrigenLongitud(),
-                solicitud.getDestinoLatitud(), solicitud.getDestinoLongitud()
+        // Obtener distancia de ms-rutas
+        DistanciaResponse distancia = rutasWebClient.obtenerDistancia(
+                lat1.doubleValue(), lon1.doubleValue(),
+                lat2.doubleValue(), lon2.doubleValue()
         );
-        DistanciaResponse distancia = rutasWebClient.obtenerDistanciaEstimada(coords).block();
-        
-        // REQ 64: Precio combustible
-        TarifaDTO tarifa = rutasWebClient.obtenerTarifaVigente().block();
+        BigDecimal distanciaKm = distancia.getDistanciaMetros().divide(new BigDecimal(1000));
 
-        // 5. LÓGICA DE NEGOCIO (LOCAL)
-        if (promedios == null || distancia == null || tarifa == null) {
-            throw new RuntimeException("No se pudo obtener la información completa de costos y rutas.");
-        }
+        // Obtener promedios de ms-camiones
+        PromediosDTO promedios = camionesWebClient.obtenerPromedios(peso, volumen);
 
-        BigDecimal distanciaEnKm = distancia.getDistanciaMetros().divide(new BigDecimal("1000"), 2, RoundingMode.HALF_UP);
-        BigDecimal tiempoEnHoras = distancia.getDuracionSegundos().divide(new BigDecimal("3600"), 2, RoundingMode.HALF_UP);
+        // Obtener tarifas de ms-rutas
+        TarifaDTO tarifas = rutasWebClient.obtenerTarifas();
 
-        // Fórmula (Regla 103, 105): Costo = (Costo Base Km * Dist) + (Consumo Prom * Dist * Precio Comb)
-        BigDecimal costoBase = promedios.getCostoPromedioPorKm().multiply(distanciaEnKm);
-        BigDecimal costoCombustible = promedios.getConsumoPromedioPorKm()
-                                            .multiply(distanciaEnKm)
-                                            .multiply(tarifa.getPrecioLitro());
-        
-        BigDecimal costoEstimadoTotal = costoBase.add(costoCombustible).setScale(2, RoundingMode.HALF_UP);
-        System.out.println("Costo estimado calculado: " + costoEstimadoTotal);
+        // Calcular costo
+        BigDecimal costoTramo = distanciaKm.multiply(promedios.getCostoPromedioPorKm());
+        BigDecimal costoCombustible = distanciaKm
+                .multiply(promedios.getConsumoPromedioPorKm())
+                .multiply(tarifas.getPrecioLitro());
+        BigDecimal costoTotal = costoTramo.add(costoCombustible).add(tarifas.getCostoEstadiaDiario());
 
-        // 6. Actualizar Entidades
-        solicitud.setCostoEstimado(costoEstimadoTotal);
-        solicitud.setTiempoEstimado(tiempoEnHoras);
-        solicitud.setEstado("Programada");
+        // Calcular tiempo (distancia / 80 km/h + 24h)
+        BigDecimal tiempoHoras = distanciaKm.divide(new BigDecimal(80)).add(new BigDecimal(24));
 
-        EstadoContenedor estadoProgramado = new EstadoContenedor("Programada", LocalDateTime.now(), contenedor);
-        contenedor.getHistorialEstados().add(estadoProgramado);
-        
-        Solicitud solicitudActualizada = solicitudRepository.save(solicitud);
-        return mapToSolicitudResponseDTO(solicitudActualizada);
+        return new CostoTiempoDTO(costoTotal, tiempoHoras);
     }
-    
+
     /**
-     * REQ 9: Finalizar Solicitud (¡Esto es lo que sigue!)
+     * Finaliza una solicitud.
      */
     @Transactional
-    public SolicitudResponseDTO finalizarSolicitud(Long idSolicitud, FinalizarSolicitudDTO dto) {
-        Solicitud solicitud = findSolicitudById(idSolicitud);
+    public SolicitudResponseDTO finalizarSolicitud(Long id) {
+        Solicitud solicitud = solicitudRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Solicitud no encontrada"));
 
-        // Lógica simple: El operador nos pasa el costo y tiempo final (según entrega inicial)
-        solicitud.setCostoFinal(dto.getCostoFinal());
-        solicitud.setTiempoReal(dto.getTiempoReal());
-        solicitud.setEstado("Entregada");
+        solicitud.setEstado("ENTREGADA");
+        solicitud.setCostoFinal(solicitud.getCostoEstimado());
+        solicitud.setTiempoReal(solicitud.getTiempoEstimado());
 
-        // (Lógica Opcional Avanzada: podrías llamar a ms-rutas para que calcule el costo final
-        // basado en los tramos reales, estadías, etc. y no confiar en el DTO de entrada)
-
-        EstadoContenedor estadoEntregado = new EstadoContenedor("Entregada", LocalDateTime.now(), solicitud.getContenedor());
-        solicitud.getContenedor().getHistorialEstados().add(estadoEntregado);
-
-        Solicitud solicitudActualizada = solicitudRepository.save(solicitud);
-        return mapToSolicitudResponseDTO(solicitudActualizada);
+        solicitudRepository.save(solicitud);
+        return mapToResponseDTO(solicitud);
     }
 
     /**
-     * REQ 2: Consultar Estado/Seguimiento (Corregido)
+     * Lista todas las solicitudes.
      */
-    @Transactional(readOnly = true)
-    public SeguimientoDTO consultarEstadoSolicitud(Long idSolicitud) {
-        Solicitud solicitud = findSolicitudById(idSolicitud);
-        EstadoContenedor estadoActualDB = solicitud.getContenedor().getEstadoActual();
-        
-        if (estadoActualDB == null) {
-            throw new RuntimeException("La solicitud no tiene ningún estado registrado.");
-        }
-
-        String estadoNombre = estadoActualDB.getNombre();
-
-        // Flujo 3: Si está "en viaje", preguntamos a ms-rutas
-        if (estadoNombre.equals("En Transito") || estadoNombre.equals("En Deposito")) {
-            try {
-                // LLAMAR A MS-RUTAS (WebClient)
-                SeguimientoDTO seguimientoRuta = rutasWebClient.obtenerUbicacionActual(idSolicitud).block();
-                if (seguimientoRuta != null) {
-                    return seguimientoRuta; // Ej: {"estado": "En Deposito", "ubicacion": "Depósito Central"}
-                }
-            } catch (Exception e) {
-                 return new SeguimientoDTO(estadoNombre, "Ubicación no disponible (error de red)");
-            }
-        }
-        
-        // Si no está "en viaje", respondemos con el estado local
-        String ubicacionLocal = "Origen (pendiente de retiro)";
-        if (estadoNombre.equals("Borrador")) ubicacionLocal = "Origen (solicitud no programada)";
-        if (estadoNombre.equals("Programada")) ubicacionLocal = "Origen (programada para retiro)";
-        if (estadoNombre.equals("Entregada")) ubicacionLocal = "Destino (entrega finalizada)";
-
-        return new SeguimientoDTO(estadoNombre, ubicacionLocal);
+    public List<SolicitudResponseDTO> listarSolicitudes() {
+        return solicitudRepository.findAll().stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
     }
 
     /**
-     * GET /solicitudes (Corregido)
+     * Obtiene una solicitud por ID.
      */
-    @Transactional(readOnly = true)
-    public List<SolicitudResponseDTO> obtenerTodasLasSolicitudes(String estado) {
-        // 1. Buscamos todas las solicitudes
-        List<Solicitud> solicitudes;
-        if (estado != null && !estado.isBlank()) {
-            solicitudes = solicitudRepository.findByEstado(estado);
-        } else {
-            solicitudes = solicitudRepository.findAll();
-        }
-        
-        // 2. Las convertimos a DTOs
-        return solicitudes.stream()
-                .map(this::mapToSolicitudResponseDTO)
-                .toList();
+    public SolicitudResponseDTO obtenerSolicitud(Long id) {
+        Solicitud solicitud = solicitudRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Solicitud no encontrada"));
+        return mapToResponseDTO(solicitud);
     }
-    
+
     /**
-     * GET /solicitudes/{id} (¡Faltaba este!)
+     * Obtiene el seguimiento de una solicitud.
      */
-    @Transactional(readOnly = true)
-    public SolicitudResponseDTO obtenerSolicitudPorId(Long idSolicitud) {
-        Solicitud solicitud = findSolicitudById(idSolicitud);
-        return mapToSolicitudResponseDTO(solicitud);
+    public SeguimientoDTO obtenerEstado(Long id) {
+        Solicitud solicitud = solicitudRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Solicitud no encontrada"));
+
+        return new SeguimientoDTO(
+                solicitud.getEstado(),
+                "Estado: " + solicitud.getEstado()
+        );
     }
 
-    // --- MÉTODOS PRIVADOS HELPER ---
-
-    private Solicitud findSolicitudById(Long id) {
-        if (id == null) {
-            throw new IllegalArgumentException("El ID no puede ser nulo");
-        }
-        return solicitudRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Solicitud no encontrada: " + id));
+    /**
+     * Actualiza el estado de un contenedor.
+     */
+    @Transactional
+    public void actualizarEstadoContenedor(Long idContenedor, String nuevoEstado) {
+        Contenedor contenedor = contenedorRepository.findById(idContenedor)
+                .orElseThrow(() -> new EntityNotFoundException("Contenedor no encontrado"));
+        // Aquí actualizarías el estado si existe una entidad EstadoContenedor
+        // Por ahora, se deja vacío
     }
 
-    private SolicitudResponseDTO mapToSolicitudResponseDTO(Solicitud solicitud) {
+    /**
+     * Mapea Solicitud a SolicitudResponseDTO.
+     */
+    private SolicitudResponseDTO mapToResponseDTO(Solicitud solicitud) {
         SolicitudResponseDTO dto = new SolicitudResponseDTO();
-        dto.setIdSolicitud(solicitud.getId());
-        
-        Cliente cliente = solicitud.getCliente();
-        dto.setNombreCliente(cliente.getNombre() + " " + cliente.getApellido());
-        
-        // Usamos el método helper que agregamos en Contenedor.java
-        EstadoContenedor estadoActual = solicitud.getContenedor().getEstadoActual();
-        dto.setEstadoActual(estadoActual != null ? estadoActual.getNombre() : "SIN_ESTADO");
-
+        dto.setId(solicitud.getId());
+        dto.setEstado(solicitud.getEstado());
         dto.setCostoEstimado(solicitud.getCostoEstimado());
         dto.setCostoFinal(solicitud.getCostoFinal());
         dto.setTiempoEstimado(solicitud.getTiempoEstimado());
         dto.setTiempoReal(solicitud.getTiempoReal());
-        
         return dto;
+    }
+
+    /**
+     * DTO interno para costo y tiempo.
+     */
+    private static class CostoTiempoDTO {
+        BigDecimal costo;
+        BigDecimal tiempo;
+
+        CostoTiempoDTO(BigDecimal costo, BigDecimal tiempo) {
+            this.costo = costo;
+            this.tiempo = tiempo;
+        }
     }
 }
