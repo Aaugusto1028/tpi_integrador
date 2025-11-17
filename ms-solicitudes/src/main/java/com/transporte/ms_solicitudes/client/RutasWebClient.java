@@ -13,7 +13,7 @@ public class RutasWebClient {
 
     private static final String MS_RUTAS_URL = "http://ms-rutas:8081/rutas";
 
-    public DistanciaResponse obtenerDistancia(double lat1, double lon1, double lat2, double lon2) {
+    public DistanciaDTO obtenerDistancia(double lat1, double lon1, double lat2, double lon2) {
         CoordenadasRequest request = new CoordenadasRequest(
                 new java.math.BigDecimal(lat1),
                 new java.math.BigDecimal(lon1),
@@ -24,7 +24,7 @@ public class RutasWebClient {
                 .uri(MS_RUTAS_URL + "/distancia")
                 .bodyValue(request)
                 .retrieve()
-                .bodyToMono(DistanciaResponse.class)
+                .bodyToMono(DistanciaDTO.class)
                 .block();
     }
 
@@ -41,14 +41,6 @@ public class RutasWebClient {
                 .uri(MS_RUTAS_URL + "/contenedores/{id}/ubicacion", idContenedor)
                 .retrieve()
                 .bodyToMono(String.class)
-                .block();
-    }
-
-    public DetallesRutaDTO getDetallesRutaFinalizada(Long solicitudId) {
-        return webClient.get()
-                .uri(MS_RUTAS_URL + "/solicitud/{id}/detalles-finales", solicitudId)
-                .retrieve()
-                .bodyToMono(DetallesRutaDTO.class)
                 .block();
     }
 }

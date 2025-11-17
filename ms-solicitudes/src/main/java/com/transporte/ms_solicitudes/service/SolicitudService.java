@@ -46,11 +46,12 @@ public class SolicitudService {
 
     /**
      * Crea una nueva solicitud con costo y tiempo estimado.
+     * Auto-crea el cliente si no existe.
      */
     @Transactional
     public SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO dto) {
-        // 1. Buscar cliente (lógica existente)
-        Cliente cliente = clienteService.buscarClientePorDni(dto.getClienteDni());
+        // 1. Buscar o crear cliente
+        Cliente cliente = clienteService.buscarOcreaerCliente(dto.getClienteDni());
 
         // 2. Crear contenedor (lógica existente)
         Contenedor contenedor = new Contenedor();
@@ -109,7 +110,7 @@ public class SolicitudService {
             BigDecimal peso, BigDecimal volumen) {
 
         // Obtener distancia de ms-rutas
-        DistanciaResponse distancia = rutasWebClient.obtenerDistancia(
+        DistanciaDTO distancia = rutasWebClient.obtenerDistancia(
                 lat1.doubleValue(), lon1.doubleValue(),
                 lat2.doubleValue(), lon2.doubleValue()
         );

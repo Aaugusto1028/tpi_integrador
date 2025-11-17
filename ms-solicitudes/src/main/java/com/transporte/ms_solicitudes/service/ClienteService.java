@@ -43,4 +43,26 @@ public class ClienteService {
         
         return clienteRepository.save(cliente);
     }
+
+    /**
+     * Busca un cliente por DNI. Si no existe, lo crea con datos mínimos.
+     * Usado en crearSolicitud para auto-crear cliente si no existe.
+     */
+    @Transactional
+    public Cliente buscarOcreaerCliente(String dni) {
+        if (dni == null || dni.isBlank()) {
+            throw new IllegalArgumentException("El DNI del cliente no puede ser vacío");
+        }
+        
+        return clienteRepository.findByDni(dni)
+                .orElseGet(() -> {
+                    Cliente nuevoCliente = new Cliente();
+                    nuevoCliente.setDni(dni);
+                    nuevoCliente.setNombre("Pendiente");
+                    nuevoCliente.setApellido("Pendiente");
+                    nuevoCliente.setEmail(dni + "@pendiente.com");
+                    nuevoCliente.setTelefono("0");
+                    return clienteRepository.save(nuevoCliente);
+                });
+    }
 }

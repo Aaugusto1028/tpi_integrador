@@ -4,7 +4,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-public class DistanciaResponse {
+public class DistanciaDTO {
     // REQ 8.1: Recorrido total
     private BigDecimal distanciaMetros;
     // REQ 106: Tiempo estimado
