@@ -43,4 +43,12 @@ public class RutasWebClient {
                 .bodyToMono(String.class)
                 .block();
     }
+
+    public DetallesRutaDTO getDetallesRutaFinalizada(Long solicitudId) {
+        return webClient.get()
+                .uri(MS_RUTAS_URL + "/solicitud/{id}/detalles-finales", solicitudId)
+                .retrieve()
+                .bodyToMono(DetallesRutaDTO.class)
+                .block();
+    }
 }
