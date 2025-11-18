@@ -16,45 +16,41 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections; // Asegúrate de importar Collections
 
 @Configuration
-@EnableWebFluxSecurity // Necesario para seguridad en Spring WebFlux (usado por Gateway)
+@EnableWebFluxSecurity 
 public class GatewayConfig {
 
     // --- 1. Configuración de Ruteo (RouteLocator) ---
-
+    // (Esta parte queda igual, está perfecta)
     @Bean
     public RouteLocator routeLocator(RouteLocatorBuilder builder) {
         return builder.routes()
             
-            // Rutas para ms-solicitudes (Puerto 8081)
             .route("ms-solicitudes-api", r -> r.path("/api/solicitudes/**", "/api/clientes/**")
                 .filters(f -> f.rewritePath("/api/(?<segment>.*)", "/${segment}"))
-                .uri("lb://ms-solicitudes:8081")) // Usamos lb:// o la URL directa: http://ms-solicitudes:8081
+                .uri("lb://ms-solicitudes:8081")) 
             
-            // Rutas para ms-rutas (Puerto 8082)
             .route("ms-rutas-api", r -> r.path("/api/rutas/**", "/api/tramos/**", "/api/depositos/**")
                 .filters(f -> f.rewritePath("/api/(?<segment>.*)", "/${segment}"))
-                .uri("lb://ms-rutas:8082")) // Usamos lb:// o la URL directa: http://ms-rutas:8082
+                .uri("lb://ms-rutas:8082")) 
             
-            // Rutas para ms-camiones (Puerto 8083)
             .route("ms-camiones-api", r -> r.path("/api/camiones/**")
                 .filters(f -> f.rewritePath("/api/(?<segment>.*)", "/${segment}"))
-                .uri("lb://ms-camiones:8083")) // Usamos lb:// o la URL directa: http://ms-camiones:8083
+                .uri("lb://ms-camiones:8083")) 
 
             .build();
     }
     
     // --- 2. Configuración de Seguridad (SecurityWebFilterChain) ---
-
+    // (Esta parte queda igual)
     @Bean
     public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http) {
         http
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             .authorizeExchange(exchanges -> exchanges
-                // Endpoints públicos (Swagger, API Docs, Health)
                 .pathMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                // Cualquier otra petición debe estar autenticada
                 .anyExchange().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
@@ -72,13 +68,20 @@ public class GatewayConfig {
         @Override
         public Mono<? extends org.springframework.security.authentication.AbstractAuthenticationToken> convert(Jwt jwt) {
             Map<String, Collection<String>> realmAccess = jwt.getClaim("realm_access");
-            Collection<String> roles = realmAccess != null ? realmAccess.get("roles") : new ArrayList<>();
+            
+            // ARREGLO: Chequeo de nulos
+            if (realmAccess == null) {
+                return Mono.just(new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(jwt, Collections.emptyList()));
+            }
+            Collection<String> roles = realmAccess.get("roles");
+            if (roles == null) {
+                return Mono.just(new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(jwt, Collections.emptyList()));
+            }
             
             List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-            if (roles != null) {
-                for (String role : roles) {
-                    authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
-                }
+            for (String role : roles) {
+                // ARREGLO CLAVE: Convertir a mayúsculas
+                authorities.add(new SimpleGrantedAuthority(role.toUpperCase()));
             }
             
             var token = new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(jwt, authorities);

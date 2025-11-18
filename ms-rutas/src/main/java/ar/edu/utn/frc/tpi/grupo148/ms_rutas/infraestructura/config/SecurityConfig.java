@@ -20,8 +20,6 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // si tenés health o lo que sea, podés permitirlo acá
-                        // .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
@@ -46,7 +44,8 @@ public class SecurityConfig {
 
             return roles.stream()
                     .map(Object::toString)
-                    .map(roleName -> "ROLE_" + roleName) // OPERADOR -> ROLE_OPERADOR
+                    // ARREGLO CLAVE: Convertir a mayúsculas
+                    .map(String::toUpperCase)
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
         });

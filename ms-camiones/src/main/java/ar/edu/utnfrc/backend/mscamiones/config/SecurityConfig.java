@@ -2,44 +2,31 @@ package ar.edu.utnfrc.backend.mscamiones.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-// REMOVER ESTA IMPORTACIÓN: import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.util.Collection;
+import java.util.Collections; // Asegúrate de importar Collections
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity // Esto ya lo tenías bien
 public class SecurityConfig {
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Deshabilitar CSRF para APIs sin estado (Stateless)
             .csrf(AbstractHttpConfigurer::disable)
-            
-            // Configurar la autorización de las peticiones HTTP
             .authorizeHttpRequests(authorize -> authorize
-                // Endpoints públicos (ej: Swagger)
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                
-                // Endpoints específicos para Transportistas
-                .requestMatchers("/camiones/transportistas/me/tramos").hasRole("Transportista") //
-                
-                // Endpoints para Operadores
-                .requestMatchers("/camiones/**").hasRole("Operador")
-                
-                // Cualquier otra petición debe ser autenticada
                 .anyRequest().authenticated()
             )
-            
-            // Configurar el Resource Server (OAuth2 JWT)
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwtConfigurer -> jwtConfigurer
                     .jwtAuthenticationConverter(jwtAuthenticationConverter()))
@@ -48,18 +35,28 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Configurador para extraer los roles de Keycloak (claim: realm_access.roles)
+    // Configurador para extraer los roles de Keycloak
     private JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
         
-        // Define cómo extraer las autoridades (roles) del JWT
         jwtConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
             Map<String, Collection<String>> realmAccess = jwt.getClaim("realm_access");
+            // ARREGLO: Añadido chequeo de nulo
+            if (realmAccess == null) {
+                return Collections.emptyList();
+            }
+            
             Collection<String> roles = realmAccess.get("roles");
             
-            // Mapea los roles de Keycloak a las autoridades de Spring Security (ej: ROLE_Operador)
+            // ARREGLO: Añadido chequeo de nulo
+            if (roles == null) {
+                return Collections.emptyList();
+            }
+
             return roles.stream()
-                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+                        // ARREGLO CLAVE: Convertir a mayúsculas
+                        .map(String::toUpperCase)
+                        .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());
         });
         return jwtConverter;
