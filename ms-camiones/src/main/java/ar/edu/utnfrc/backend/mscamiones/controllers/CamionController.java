@@ -56,9 +56,52 @@ public class CamionController {
         @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
         @ApiResponse(responseCode = "400", description = "Datos inválidos en la solicitud")
     })
-    public ResponseEntity<Camion> createCamion(@RequestBody Camion camion) {
-        Camion nuevoCamion = camionService.save(camion);
-        return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
+    public ResponseEntity<?> createCamion(@RequestBody Camion camion) {
+        try {
+            if (camion == null || camion.getPatente() == null || camion.getPatente().isBlank()) {
+                return ResponseEntity.badRequest().body("Patente del camión es obligatoria");
+            }
+            if (camion.getNombreTransportista() == null || camion.getNombreTransportista().isBlank()) {
+                return ResponseEntity.badRequest().body("Nombre del transportista es obligatorio");
+            }
+            if (camion.getTelefonoTransportista() == null || camion.getTelefonoTransportista().isBlank()) {
+                return ResponseEntity.badRequest().body("Teléfono del transportista es obligatorio");
+            }
+            if (camion.getCapacidadPeso() == null) {
+                return ResponseEntity.badRequest().body("Capacidad de peso es obligatoria");
+            }
+            if (camion.getCapacidadPeso() <= 0) {
+                return ResponseEntity.badRequest().body("Capacidad de peso debe ser mayor a 0");
+            }
+            if (camion.getCapacidadVolumen() == null) {
+                return ResponseEntity.badRequest().body("Capacidad de volumen es obligatoria");
+            }
+            if (camion.getCapacidadVolumen() <= 0) {
+                return ResponseEntity.badRequest().body("Capacidad de volumen debe ser mayor a 0");
+            }
+            if (camion.getConsumoCombustibleKm() == null) {
+                return ResponseEntity.badRequest().body("Consumo de combustible es obligatorio");
+            }
+            if (camion.getConsumoCombustibleKm() <= 0) {
+                return ResponseEntity.badRequest().body("Consumo de combustible debe ser mayor a 0");
+            }
+            if (camion.getCostoPorKm() == null) {
+                return ResponseEntity.badRequest().body("Costo por km es obligatorio");
+            }
+            if (camion.getCostoPorKm() <= 0) {
+                return ResponseEntity.badRequest().body("Costo por km debe ser mayor a 0");
+            }
+            if (camion.getDisponibilidad() == null) {
+                return ResponseEntity.badRequest().body("Disponibilidad del camión es obligatoria");
+            }
+            
+            Camion nuevoCamion = camionService.save(camion);
+            return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al crear camión: " + e.getMessage());
+        }
     }
 
     // --- Endpoint: GET /camiones/buscar-apto (Public - for inter-service communication) ---
@@ -69,12 +112,28 @@ public class CamionController {
         @ApiResponse(responseCode = "200", description = "Listado de camiones aptos obtenido exitosamente"),
         @ApiResponse(responseCode = "400", description = "Parámetros de búsqueda inválidos")
     })
-    public ResponseEntity<List<Camion>> getCamionesAptos(
+    public ResponseEntity<?> getCamionesAptos(
             @RequestParam Double peso,
             @RequestParam Double volumen) {
-        
-        List<Camion> camionesAptos = camionService.findAptos(peso, volumen);
-        return ResponseEntity.ok(camionesAptos);
+        try {
+            if (peso == null) {
+                return ResponseEntity.badRequest().body("Peso es obligatorio");
+            }
+            if (peso <= 0) {
+                return ResponseEntity.badRequest().body("Peso debe ser mayor a 0");
+            }
+            if (volumen == null) {
+                return ResponseEntity.badRequest().body("Volumen es obligatorio");
+            }
+            if (volumen <= 0) {
+                return ResponseEntity.badRequest().body("Volumen debe ser mayor a 0");
+            }
+            
+            List<Camion> camionesAptos = camionService.findAptos(peso, volumen);
+            return ResponseEntity.ok(camionesAptos);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al buscar camiones aptos: " + e.getMessage());
+        }
     }
 
     // --- Endpoint: GET /camiones/transportistas/me/tramos (Roles: Transportista) ---
@@ -87,30 +146,32 @@ public class CamionController {
         @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol TRANSPORTISTA)"),
         @ApiResponse(responseCode = "400", description = "No se pudo determinar el camión del transportista")
     })
-    public ResponseEntity<List<TramoDTO>> getTramosTransportista(Authentication authentication) {
-        
-        if (authentication == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        
-        String jwtToken = null;
-        if (authentication instanceof JwtAuthenticationToken) {
-            Jwt jwt = ((JwtAuthenticationToken) authentication).getToken();
-            jwtToken = jwt.getTokenValue();
-        }
-        
-        if (jwtToken == null) {
-             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build(); 
-        }
+    public ResponseEntity<?> getTramosTransportista(Authentication authentication) {
+        try {
+            if (authentication == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No autenticado");
+            }
+            
+            String jwtToken = null;
+            if (authentication instanceof JwtAuthenticationToken) {
+                Jwt jwt = ((JwtAuthenticationToken) authentication).getToken();
+                jwtToken = jwt.getTokenValue();
+            }
+            
+            if (jwtToken == null) {
+                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token JWT no disponible");
+            }
 
-        String patenteCamionAsignado = authentication.getName();
-        if (patenteCamionAsignado == null || patenteCamionAsignado.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            String patenteCamionAsignado = authentication.getName();
+            if (patenteCamionAsignado == null || patenteCamionAsignado.isEmpty()) {
+                return ResponseEntity.badRequest().body("No se pudo determinar la patente del camión del transportista");
+            }
+
+            List<TramoDTO> tramos = camionService.getTramosPorTransportista(patenteCamionAsignado, jwtToken);
+            return ResponseEntity.ok(tramos);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener tramos: " + e.getMessage());
         }
-
-        List<TramoDTO> tramos = camionService.getTramosPorTransportista(patenteCamionAsignado, jwtToken);
-
-        return ResponseEntity.ok(tramos);
     }
 
     // Endpoint: GET /camiones/{patente} (Public - for inter-service communication)
@@ -122,10 +183,20 @@ public class CamionController {
                     content = @Content(schema = @Schema(implementation = Camion.class))),
         @ApiResponse(responseCode = "404", description = "Camión no encontrado")
     })
-    public ResponseEntity<Camion> getCamionById(@PathVariable String patente) {
-        Optional<Camion> camion = camionService.findById(patente);
-        return camion.map(ResponseEntity::ok)
-                     .orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<?> getCamionById(@PathVariable String patente) {
+        try {
+            if (patente == null || patente.isBlank()) {
+                return ResponseEntity.badRequest().body("Patente del camión es obligatoria");
+            }
+            Optional<Camion> camion = camionService.findById(patente);
+            if (camion.isPresent()) {
+                return ResponseEntity.ok(camion.get());
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Camión no encontrado");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener camión: " + e.getMessage());
+        }
     }
 
     // Endpoint: GET /camiones/promedios?peso=...&volumen=...
@@ -138,12 +209,28 @@ public class CamionController {
         @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
         @ApiResponse(responseCode = "400", description = "Parámetros inválidos")
     })
-    public ResponseEntity<PromediosDTO> getPromedios(
+    public ResponseEntity<?> getPromedios(
             @RequestParam("peso") Double peso,
             @RequestParam("volumen") Double volumen) {
-
-        PromediosDTO promedios = camionService.obtenerPromedios(peso, volumen);
-        return ResponseEntity.ok(promedios);
+        try {
+            if (peso == null) {
+                return ResponseEntity.badRequest().body("Peso es obligatorio");
+            }
+            if (peso <= 0) {
+                return ResponseEntity.badRequest().body("Peso debe ser mayor a 0");
+            }
+            if (volumen == null) {
+                return ResponseEntity.badRequest().body("Volumen es obligatorio");
+            }
+            if (volumen <= 0) {
+                return ResponseEntity.badRequest().body("Volumen debe ser mayor a 0");
+            }
+            
+            PromediosDTO promedios = camionService.obtenerPromedios(peso, volumen);
+            return ResponseEntity.ok(promedios);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al calcular promedios: " + e.getMessage());
+        }
     }
 
     /**
@@ -159,11 +246,18 @@ public class CamionController {
                     content = @Content(schema = @Schema(implementation = CamionDetalleDTO.class))),
         @ApiResponse(responseCode = "404", description = "Camión no encontrado")
     })
-    public ResponseEntity<CamionDetalleDTO> getDetalleCamion(@PathVariable String patente) {
-        CamionDetalleDTO detalle = camionService.obtenerDetalleCamion(patente);
-        if (detalle == null) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<?> getDetalleCamion(@PathVariable String patente) {
+        try {
+            if (patente == null || patente.isBlank()) {
+                return ResponseEntity.badRequest().body("Patente del camión es obligatoria");
+            }
+            CamionDetalleDTO detalle = camionService.obtenerDetalleCamion(patente);
+            if (detalle == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Camión no encontrado");
+            }
+            return ResponseEntity.ok(detalle);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener detalles del camión: " + e.getMessage());
         }
-        return ResponseEntity.ok(detalle);
     }
 }

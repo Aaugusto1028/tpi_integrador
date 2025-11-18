@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 // --- FIN DE IMPORTACIONES AÑADIDAS ---
 
 @RestController
@@ -64,9 +65,35 @@ public class RutaController {
         @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
         @ApiResponse(responseCode = "400", description = "Datos inválidos en la solicitud")
     })
-    public ResponseEntity<Ruta> crearRuta(@RequestBody CrearRutaRequest request) {
-        Ruta nuevaRuta = rutaService.crearRutaTentativa(request);
-        return ResponseEntity.status(201).body(nuevaRuta);
+    public ResponseEntity<?> crearRuta(@RequestBody CrearRutaRequest request) {
+        try {
+            if (request == null || request.getIdSolicitud() == null || request.getIdSolicitud() <= 0) {
+                return ResponseEntity.badRequest().body("ID de solicitud es obligatorio y debe ser mayor a 0");
+            }
+            if (request.getTramos() == null || request.getTramos().isEmpty()) {
+                return ResponseEntity.badRequest().body("Debe proporcionar al menos un tramo");
+            }
+            
+            for (int i = 0; i < request.getTramos().size(); i++) {
+                CrearRutaRequest.TramoDTO tramo = request.getTramos().get(i);
+                if (tramo.getIdDepositoOrigen() == null || tramo.getIdDepositoOrigen() <= 0) {
+                    return ResponseEntity.badRequest().body("Tramo " + (i+1) + ": ID depósito origen es obligatorio");
+                }
+                if (tramo.getIdDepositoDestino() == null || tramo.getIdDepositoDestino() <= 0) {
+                    return ResponseEntity.badRequest().body("Tramo " + (i+1) + ": ID depósito destino es obligatorio");
+                }
+                if (tramo.getIdTipoTramo() == null || tramo.getIdTipoTramo() <= 0) {
+                    return ResponseEntity.badRequest().body("Tramo " + (i+1) + ": ID tipo tramo es obligatorio");
+                }
+            }
+            
+            Ruta nuevaRuta = rutaService.crearRutaTentativa(request);
+            return ResponseEntity.status(201).body(nuevaRuta);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al crear ruta: " + e.getMessage());
+        }
     }
 
     /**
@@ -98,12 +125,19 @@ public class RutaController {
         @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
         @ApiResponse(responseCode = "204", description = "No hay rutas para esta solicitud")
     })
-    public ResponseEntity<java.util.List<Ruta>> obtenerRutasPorSolicitud(@PathVariable Long idSolicitud) {
-        java.util.List<Ruta> rutas = rutaRepository.findByIdSolicitud(idSolicitud);
-        if (rutas == null || rutas.isEmpty()) {
-            return ResponseEntity.noContent().build();
+    public ResponseEntity<?> obtenerRutasPorSolicitud(@PathVariable Long idSolicitud) {
+        try {
+            if (idSolicitud == null || idSolicitud <= 0) {
+                return ResponseEntity.badRequest().body("ID de solicitud inválido");
+            }
+            java.util.List<Ruta> rutas = rutaRepository.findByIdSolicitud(idSolicitud);
+            if (rutas == null || rutas.isEmpty()) {
+                return ResponseEntity.noContent().build();
+            }
+            return ResponseEntity.ok(rutas);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener rutas: " + e.getMessage());
         }
-        return ResponseEntity.ok(rutas);
     }
 
     /**
@@ -118,10 +152,20 @@ public class RutaController {
         @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
         @ApiResponse(responseCode = "404", description = "Ruta no encontrada")
     })
-    public ResponseEntity<Ruta> obtenerRutaPorId(@PathVariable Long id) {
-        return rutaRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<?> obtenerRutaPorId(@PathVariable Long id) {
+        try {
+            if (id == null || id <= 0) {
+                return ResponseEntity.badRequest().body("ID de ruta inválido");
+            }
+            var ruta = rutaRepository.findById(id);
+            if (ruta.isPresent()) {
+                return ResponseEntity.ok(ruta.get());
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Ruta no encontrada");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener ruta: " + e.getMessage());
+        }
     }
 
     /**
@@ -135,10 +179,20 @@ public class RutaController {
                     content = @Content(schema = @Schema(implementation = Ruta.class))),
         @ApiResponse(responseCode = "404", description = "Ruta no encontrada")
     })
-    public ResponseEntity<Ruta> obtenerRutaPorIdPublico(@PathVariable Long id) {
-        return rutaRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<?> obtenerRutaPorIdPublico(@PathVariable Long id) {
+        try {
+            if (id == null || id <= 0) {
+                return ResponseEntity.badRequest().body("ID de ruta inválido");
+            }
+            var ruta = rutaRepository.findById(id);
+            if (ruta.isPresent()) {
+                return ResponseEntity.ok(ruta.get());
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Ruta no encontrada");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener ruta: " + e.getMessage());
+        }
     }
 
     /**
@@ -153,9 +207,18 @@ public class RutaController {
         @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
         @ApiResponse(responseCode = "404", description = "Ruta no encontrada")
     })
-    public ResponseEntity<Ruta> asignarRuta(@PathVariable Long id) {
-        Ruta rutaAsignada = rutaService.asignarRuta(id);
-        return ResponseEntity.ok(rutaAsignada);
+    public ResponseEntity<?> asignarRuta(@PathVariable Long id) {
+        try {
+            if (id == null || id <= 0) {
+                return ResponseEntity.badRequest().body("ID de ruta inválido");
+            }
+            Ruta rutaAsignada = rutaService.asignarRuta(id);
+            return ResponseEntity.ok(rutaAsignada);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Ruta no encontrada: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al asignar ruta: " + e.getMessage());
+        }
     }
 
     /**
