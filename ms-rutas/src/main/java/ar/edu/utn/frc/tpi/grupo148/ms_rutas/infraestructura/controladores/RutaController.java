@@ -23,11 +23,17 @@ import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.CoordenadasRequest;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.DistanciaDTO;
 import java.math.BigDecimal;
 import reactor.core.publisher.Mono;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 // --- FIN DE IMPORTACIONES AÑADIDAS ---
 
 @RestController
 @RequestMapping("/rutas")
-public class RutaController {
+@Tag(name = "Rutas", description = "Gestión de rutas de transporte")
 
     @Autowired
     private RutaService rutaService;
@@ -47,22 +53,31 @@ public class RutaController {
 
     /**
      * Endpoint para crear una nueva ruta tentativa con todos sus tramos.
-     * ... (resto de los comentarios)
      */
     @PostMapping
     @PreAuthorize("hasAuthority('OPERADOR')")
+    @Operation(summary = "Crear una nueva ruta", description = "Crea una ruta tentativa con todos sus tramos asociados")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Ruta creada exitosamente", 
+                    content = @Content(schema = @Schema(implementation = Ruta.class))),
+        @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos en la solicitud")
+    })
     public ResponseEntity<Ruta> crearRuta(@RequestBody CrearRutaRequest request) {
         Ruta nuevaRuta = rutaService.crearRutaTentativa(request);
-        // Devuelve 201 Created
         return ResponseEntity.status(201).body(nuevaRuta);
     }
 
     /**
      * Endpoint para listar rutas (paginado).
-     * ... (resto de los comentarios)
      */
     @GetMapping
     @PreAuthorize("hasAuthority('OPERADOR')")
+    @Operation(summary = "Listar rutas", description = "Obtiene un listado paginado de todas las rutas")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Listado de rutas obtenido exitosamente"),
+        @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)")
+    })
     public ResponseEntity<Page<Ruta>> listarRutas(
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
@@ -73,10 +88,15 @@ public class RutaController {
 
     /**
      * Endpoint para obtener rutas asociadas a una solicitud.
-     * ... (resto de los comentarios)
      */
     @GetMapping("/solicitud/{idSolicitud}")
     @PreAuthorize("hasAuthority('OPERADOR')")
+    @Operation(summary = "Obtener rutas por solicitud", description = "Obtiene todas las rutas asociadas a una solicitud específica")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Rutas obtenidas exitosamente"),
+        @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
+        @ApiResponse(responseCode = "204", description = "No hay rutas para esta solicitud")
+    })
     public ResponseEntity<java.util.List<Ruta>> obtenerRutasPorSolicitud(@PathVariable Long idSolicitud) {
         java.util.List<Ruta> rutas = rutaRepository.findByIdSolicitud(idSolicitud);
         if (rutas == null || rutas.isEmpty()) {
@@ -90,6 +110,13 @@ public class RutaController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('OPERADOR')")
+    @Operation(summary = "Obtener detalles de una ruta", description = "Obtiene los detalles completos de una ruta específica por su ID")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Detalles de la ruta obtenidos exitosamente", 
+                    content = @Content(schema = @Schema(implementation = Ruta.class))),
+        @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
+        @ApiResponse(responseCode = "404", description = "Ruta no encontrada")
+    })
     public ResponseEntity<Ruta> obtenerRutaPorId(@PathVariable Long id) {
         return rutaRepository.findById(id)
                 .map(ResponseEntity::ok)
@@ -100,6 +127,12 @@ public class RutaController {
      * Obtener detalle de una ruta por id (versión pública, sin autenticación)
      */
     @GetMapping("/publico/{id}")
+    @Operation(summary = "Obtener ruta pública", description = "Obtiene los detalles de una ruta sin requerir autenticación")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Detalles de la ruta obtenidos exitosamente", 
+                    content = @Content(schema = @Schema(implementation = Ruta.class))),
+        @ApiResponse(responseCode = "404", description = "Ruta no encontrada")
+    })
     public ResponseEntity<Ruta> obtenerRutaPorIdPublico(@PathVariable Long id) {
         return rutaRepository.findById(id)
                 .map(ResponseEntity::ok)
@@ -111,6 +144,13 @@ public class RutaController {
      */
     @PostMapping("/{id}/asignar")
     @PreAuthorize("hasAuthority('OPERADOR')")
+    @Operation(summary = "Asignar una ruta", description = "Marca una ruta como asignada")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Ruta asignada exitosamente", 
+                    content = @Content(schema = @Schema(implementation = Ruta.class))),
+        @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
+        @ApiResponse(responseCode = "404", description = "Ruta no encontrada")
+    })
     public ResponseEntity<Ruta> asignarRuta(@PathVariable Long id) {
         Ruta rutaAsignada = rutaService.asignarRuta(id);
         return ResponseEntity.ok(rutaAsignada);
@@ -121,6 +161,12 @@ public class RutaController {
      */
     @GetMapping("/contenedores-pendientes")
     @PreAuthorize("hasAuthority('OPERADOR')")
+    @Operation(summary = "Obtener contenedores pendientes", description = "Obtiene la lista de contenedores pendientes de traslado")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Listado de contenedores pendientes obtenido exitosamente"),
+        @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
+        @ApiResponse(responseCode = "502", description = "Error al obtener contenedores pendientes")
+    })
     public ResponseEntity<Object> contenedoresPendientes() {
         try {
             String url = "http://ms-solicitudes:8081/contenedores/pendientes";
@@ -138,9 +184,14 @@ public class RutaController {
 
     /**
      * Endpoint público para que ms-solicitudes obtenga el costo real desglosado de un traslado.
-     * ... (resto de los comentarios)
      */
     @GetMapping("/solicitud/{idSolicitud}/costo-real")
+    @Operation(summary = "Obtener costo real de un traslado", description = "Obtiene el costo desglosado y detallado de un traslado asociado a una solicitud")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Costo obtenido exitosamente", 
+                    content = @Content(schema = @Schema(implementation = CostoTrasladoDTO.class))),
+        @ApiResponse(responseCode = "502", description = "Error al calcular el costo")
+    })
     public ResponseEntity<CostoTrasladoDTO> obtenerCostoTrasladoRealPorSolicitud(@PathVariable Long idSolicitud) {
         try {
             CostoTrasladoDTO costo = rutaService.obtenerCostoTrasladoRealPorSolicitud(idSolicitud);
@@ -152,9 +203,14 @@ public class RutaController {
 
     /**
      * Endpoint público para que ms-solicitudes obtenga la tarifa vigente.
-     * ... (resto de los comentarios)
      */
     @GetMapping("/tarifas")
+    @Operation(summary = "Obtener tarifas vigentes", description = "Obtiene las tarifas de transporte vigentes")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Tarifas obtenidas exitosamente", 
+                    content = @Content(schema = @Schema(implementation = TarifaDTO.class))),
+        @ApiResponse(responseCode = "502", description = "Error al obtener tarifas")
+    })
     public ResponseEntity<TarifaDTO> obtenerTarifasPublicas() {
         try {
             TarifaDTO dto = rutaService.obtenerTarifas();
@@ -166,9 +222,14 @@ public class RutaController {
 
     /**
      * Endpoint público para que ms-camiones u otros servicios obtengan los tramos
-     * ... (resto de los comentarios)
      */
     @GetMapping("/patente/{patenteCamion}/tramos")
+    @Operation(summary = "Obtener tramos por patente", description = "Obtiene todos los tramos asignados a un camión identificado por su patente")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Tramos obtenidos exitosamente"),
+        @ApiResponse(responseCode = "204", description = "No hay tramos para esta patente"),
+        @ApiResponse(responseCode = "502", description = "Error al obtener tramos")
+    })
     public ResponseEntity<List<TramoDTO>> obtenerTramosAsignadosPorPatente(
             @PathVariable String patenteCamion) {
         try {
@@ -184,9 +245,14 @@ public class RutaController {
 
     /**
      * Endpoint público para que ms-solicitudes obtenga el costo real desglosado de un traslado.
-     * ... (resto de los comentarios)
      */
     @GetMapping("/ruta/{idRuta}/costo-real")
+    @Operation(summary = "Obtener costo real de una ruta", description = "Obtiene el costo desglosado y detallado de una ruta específica")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Costo obtenido exitosamente", 
+                    content = @Content(schema = @Schema(implementation = CostoTrasladoDTO.class))),
+        @ApiResponse(responseCode = "502", description = "Error al calcular el costo")
+    })
     public ResponseEntity<CostoTrasladoDTO> obtenerCostoTrasladoReal(@PathVariable Long idRuta) {
         try {
             CostoTrasladoDTO costo = rutaService.obtenerCostoTrasladoReal(idRuta);
