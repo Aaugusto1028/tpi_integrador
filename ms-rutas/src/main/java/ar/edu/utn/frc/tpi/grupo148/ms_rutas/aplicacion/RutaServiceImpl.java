@@ -197,10 +197,11 @@ public class RutaServiceImpl implements RutaService {
         if (camion == null) {
             throw new EntityNotFoundException("Camión no encontrado: " + patente);
         }
-        if (!camion.getDisponibilidad()) {
+        if (camion.getDisponibilidad() == null || !camion.getDisponibilidad()) {
             throw new IllegalStateException("El camión " + patente + " no está disponible.");
         }
-        if (camion.getCapacidadPeso() < peso || camion.getCapacidadVolumen() < volumen) {
+        if (camion.getCapacidadPeso() == null || camion.getCapacidadVolumen() == null ||
+            camion.getCapacidadPeso() < peso || camion.getCapacidadVolumen() < volumen) {
             throw new IllegalStateException("El camión " + patente + " no soporta el peso/volumen del contenedor.");
         }
 

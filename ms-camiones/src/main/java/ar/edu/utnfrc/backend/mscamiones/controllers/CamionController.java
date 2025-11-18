@@ -26,6 +26,7 @@ public class CamionController {
 
     // Endpoint: GET /camiones (Roles: Operador)
     @GetMapping
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<List<Camion>> getAllCamiones(
             @RequestParam(required = false) Optional<Boolean> disponibilidad) {
         List<Camion> camiones = camionService.findAll(disponibilidad);
@@ -34,6 +35,7 @@ public class CamionController {
 
     // Endpoint: POST /camiones (Roles: Operador)
     @PostMapping
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<Camion> createCamion(@RequestBody Camion camion) {
         Camion nuevoCamion = camionService.save(camion);
         return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
@@ -41,6 +43,7 @@ public class CamionController {
 
     // --- Endpoint: GET /camiones/buscar-apto (Roles: Operador) ---
     @GetMapping("/buscar-apto")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<List<Camion>> getCamionesAptos(
             @RequestParam Double peso,
             @RequestParam Double volumen) {
@@ -51,6 +54,7 @@ public class CamionController {
 
     // --- Endpoint: GET /camiones/transportistas/me/tramos (Roles: Transportista) ---
     @GetMapping("/transportistas/me/tramos")
+    @PreAuthorize("hasAuthority('TRANSPORTISTA')")
     public ResponseEntity<List<TramoDTO>> getTramosTransportista(Authentication authentication) {
         
         if (authentication == null) {
@@ -93,6 +97,7 @@ public class CamionController {
 
     // Endpoint: GET /camiones/promedios?peso=...&volumen=...
     @GetMapping("/promedios")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<PromediosDTO> getPromedios(
             @RequestParam("peso") Double peso,
             @RequestParam("volumen") Double volumen) {
@@ -107,6 +112,7 @@ public class CamionController {
      * No requiere autenticación para que ms-rutas pueda acceder sin token.
      */
     @GetMapping("/detalle/{patente}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<CamionDetalleDTO> getDetalleCamion(@PathVariable String patente) {
         CamionDetalleDTO detalle = camionService.obtenerDetalleCamion(patente);
         if (detalle == null) {
