@@ -1,11 +1,7 @@
 services:
   # --- 1. Servidor de Descubrimiento (Comentado temporalmente) ---
   # eureka-server:
-  #   build:
-  #     context: ./eureka-server
-  #   container_name: eureka-server
-  #   ports:
-  #     - "8761:8761"
+  #   ... (sin cambios)
 
   # --- 2. Base de Datos (Requerida por el TP) ---
   db:
@@ -55,21 +51,12 @@ services:
       - ms-rutas
       - ms-camiones
     environment:
-      # El Gateway necesita saber dónde está Keycloak (usa el nombre del servicio)
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
+      # 1. Para VALIDAR el 'iss' del token (coincide con Postman/localhost)
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/tpi-backend
+      # 2. Para BUSCAR las claves de validación (usa la red interna de Docker)
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
       # El Gateway necesita poder acceder a los microservicios
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      # Configuramos el ruteo para que use el nombre de servicio de Docker-Compose
-      # Nota: En este caso, Spring Cloud Gateway usará el nombre del servicio directamente:
-      # - ms-solicitudes:8081
-      # - ms-rutas:8082
-      # - ms-camiones:8083
-
-  # --- 5. Tus Microservicios (cambia el mapeo de puertos locales para no colisionar) ---
-  # Nota: Ya que el Gateway usa 8080, y sus microservicios ya están configurados
-  # en 8081, 8082 y 8083, no hay colisión, pero es buena práctica no exponer
-  # los puertos internos de los MS al exterior, solo el Gateway.
-  # Dejo la configuración actual para que pueda acceder a ellos localmente si lo necesita.
 
   # --- 5. Tus Microservicios ---
   ms-solicitudes:
@@ -87,7 +74,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_logistica
       SPRING_DATASOURCE_USERNAME: tpi_user
       SPRING_DATASOURCE_PASSWORD: 12345678
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
+      # 1. Para VALIDAR el 'iss' del token (coincide con Postman/localhost)
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/tpi-backend
+      # 2. Para BUSCAR las claves de validación (usa la red interna de Docker)
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
 
   ms-rutas:
@@ -105,8 +95,12 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_logistica
       SPRING_DATASOURCE_USERNAME: tpi_user
       SPRING_DATASOURCE_PASSWORD: 12345678
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
+      # 1. Para VALIDAR el 'iss' del token (coincide con Postman/localhost)
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/tpi-backend
+      # 2. Para BUSCAR las claves de validación (usa la red interna de Docker)
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      
   ms-camiones:
     build:
       context: ./ms-camiones
@@ -122,7 +116,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_logistica
       SPRING_DATASOURCE_USERNAME: tpi_user
       SPRING_DATASOURCE_PASSWORD: 12345678
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/tpi-backend
+      # 1. Para VALIDAR el 'iss' del token (coincide con Postman/localhost)
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/tpi-backend
+      # 2. Para BUSCAR las claves de validación (usa la red interna de Docker)
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
 
 volumes:
