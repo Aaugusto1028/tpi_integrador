@@ -12,6 +12,7 @@ import org.springframework.security.core.Authentication; // Import de Spring Sec
 import org.springframework.security.oauth2.jwt.Jwt; // Import para el objeto JWT
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken; // Import para el tipo de token
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import java.util.Optional;
@@ -81,8 +82,9 @@ public class CamionController {
         return ResponseEntity.ok(tramos);
     }
 
-    // Endpoint: GET /camiones/{patente} (Roles: Operador)
+    // Endpoint: GET /camiones/{patente} (Public - for inter-service communication)
     @GetMapping("/{patente}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<Camion> getCamionById(@PathVariable String patente) {
         Optional<Camion> camion = camionService.findById(patente);
         return camion.map(ResponseEntity::ok)

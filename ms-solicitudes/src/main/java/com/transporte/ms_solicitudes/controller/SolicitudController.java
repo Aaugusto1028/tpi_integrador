@@ -37,13 +37,13 @@ public class SolicitudController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CLIENTE', 'OPERADOR')")
+    @PreAuthorize("hasAnyAuthority('CLIENTE', 'OPERADOR')")
     public ResponseEntity<SolicitudResponseDTO> obtenerSolicitud(@PathVariable Long id) {
         return ResponseEntity.ok(solicitudService.obtenerSolicitud(id));
     }
 
     @GetMapping("/{id}/estado")
-    @PreAuthorize("hasAnyRole('CLIENTE', 'OPERADOR')")
+    @PreAuthorize("hasAnyAuthority('CLIENTE', 'OPERADOR')")
     public ResponseEntity<SeguimientoDTO> obtenerEstado(@PathVariable Long id) {
         return ResponseEntity.ok(solicitudService.obtenerEstado(id));
     }
@@ -71,7 +71,7 @@ public class SolicitudController {
      * @return ResponseEntity vacía.
      */
     @PutMapping("/contenedores/{idContenedor}/estado")
-    @PreAuthorize("hasAnyRole('OPERADOR', 'TRANSPORTISTA')")
+    @PreAuthorize("hasAnyAuthority('OPERADOR', 'TRANSPORTISTA')")
     public ResponseEntity<Void> actualizarEstadoContenedor(
             @PathVariable Long idContenedor,
             @RequestBody EstadoDTO estadoDTO) {

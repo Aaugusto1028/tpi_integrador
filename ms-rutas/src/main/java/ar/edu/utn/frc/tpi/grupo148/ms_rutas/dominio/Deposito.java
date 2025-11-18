@@ -3,10 +3,12 @@ package ar.edu.utn.frc.tpi.grupo148.ms_rutas.dominio;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "DEPOSITOS")
 @Data
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Deposito {
 
     @Id

@@ -20,6 +20,13 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        // Endpoints públicos que no requieren autenticación
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/rutas/tarifas").permitAll()
+                        .requestMatchers("/rutas/solicitud/*/costo-real").permitAll()
+                        .requestMatchers("/rutas/patente/*/tramos").permitAll()
+                        .requestMatchers("/rutas/publico/**").permitAll()
+                        // Resto requieren autenticación
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));

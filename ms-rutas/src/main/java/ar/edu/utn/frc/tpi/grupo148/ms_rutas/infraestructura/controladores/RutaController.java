@@ -86,11 +86,21 @@ public class RutaController {
     }
 
     /**
-     * Obtener detalle de una ruta por id
+     * Obtener detalle de una ruta por id (requiere OPERADOR)
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<Ruta> obtenerRutaPorId(@PathVariable Long id) {
+        return rutaRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Obtener detalle de una ruta por id (versión pública, sin autenticación)
+     */
+    @GetMapping("/publico/{id}")
+    public ResponseEntity<Ruta> obtenerRutaPorIdPublico(@PathVariable Long id) {
         return rutaRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());

@@ -25,8 +25,14 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // --- LÍNEAS AÑADIDAS ---
+                .requestMatchers("/camiones/detalle/**").permitAll() 
+                .requestMatchers("/camiones/promedios").permitAll()
+                .requestMatchers("/camiones/*").permitAll() // Allow inter-service calls to get truck by patente
+                // --- FIN LÍNEAS AÑADIDAS ---
                 .anyRequest().authenticated()
             )
+            //...
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwtConfigurer -> jwtConfigurer
                     .jwtAuthenticationConverter(jwtAuthenticationConverter()))

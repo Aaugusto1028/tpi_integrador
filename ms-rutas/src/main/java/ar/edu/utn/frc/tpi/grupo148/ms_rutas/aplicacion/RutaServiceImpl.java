@@ -181,7 +181,7 @@ public class RutaServiceImpl implements RutaService {
      */
     private CamionDTO validarCamion(String patente, Double peso, Double volumen) {
         // Asumimos que "ms-camiones" es el nombre del servicio en Docker/Kubernetes
-        String url = String.format("http://ms-camiones:8083/camiones/detalle/%s", patente);
+        String url = String.format("http://ms-camiones:8083/camiones/%s", patente);
 
         CamionDTO camion;
         try {
@@ -211,7 +211,7 @@ public class RutaServiceImpl implements RutaService {
      * Llama al ms-camiones para obtener los datos de un camión (sin validar).
      */
     private CamionDTO buscarCamion(String patente) {
-        String url = String.format("http://ms-camiones:8083/camiones/detalle/%s", patente);
+        String url = String.format("http://ms-camiones:8083/camiones/%s", patente);
         try {
             CamionDTO camion = webClientBuilder.build().get()
                     .uri(url)

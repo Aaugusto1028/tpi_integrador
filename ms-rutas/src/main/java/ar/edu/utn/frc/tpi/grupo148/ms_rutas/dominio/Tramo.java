@@ -5,9 +5,16 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+// --- IMPORTACIONES AÑADIDAS ---
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+// --- FIN DE IMPORTACIONES ---
+
 @Entity
 @Table(name = "TRAMOS")
 @Data
+// --- ANOTACIÓN AÑADIDA (Arregla el error de Hibernate Proxy) ---
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Tramo {
 
     @Id
@@ -18,6 +25,7 @@ public class Tramo {
     // Relación: Muchos Tramos pertenecen a una Ruta
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_ruta") // Esta es la columna FK en la tabla TRAMOS
+    @JsonIgnore // <-- ANOTACIÓN AÑADIDA (Arregla el bucle infinito)
     private Ruta ruta;
 
     // Relación: Un Tramo tiene un Depósito de origen
