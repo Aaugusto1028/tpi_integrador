@@ -44,8 +44,9 @@ public class SecurityConfig {
 
             return roles.stream()
                     .map(Object::toString)
-                    // ARREGLO CLAVE: Convertir a mayúsculas
+                    // CORRECCIÓN CLAVE: Convertir a mayúsculas
                     .map(String::toUpperCase)
+                    // NO agregar "ROLE_"
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
         });

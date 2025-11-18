@@ -16,14 +16,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Collections; // Asegúrate de importar Collections
+import java.util.Collections; 
 
 @Configuration
 @EnableWebFluxSecurity 
 public class GatewayConfig {
 
     // --- 1. Configuración de Ruteo (RouteLocator) ---
-    // (Esta parte queda igual, está perfecta)
     @Bean
     public RouteLocator routeLocator(RouteLocatorBuilder builder) {
         return builder.routes()
@@ -44,7 +43,6 @@ public class GatewayConfig {
     }
     
     // --- 2. Configuración de Seguridad (SecurityWebFilterChain) ---
-    // (Esta parte queda igual)
     @Bean
     public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http) {
         http
@@ -69,7 +67,6 @@ public class GatewayConfig {
         public Mono<? extends org.springframework.security.authentication.AbstractAuthenticationToken> convert(Jwt jwt) {
             Map<String, Collection<String>> realmAccess = jwt.getClaim("realm_access");
             
-            // ARREGLO: Chequeo de nulos
             if (realmAccess == null) {
                 return Mono.just(new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(jwt, Collections.emptyList()));
             }
@@ -80,7 +77,7 @@ public class GatewayConfig {
             
             List<SimpleGrantedAuthority> authorities = new ArrayList<>();
             for (String role : roles) {
-                // ARREGLO CLAVE: Convertir a mayúsculas
+                // CORRECCIÓN CLAVE: Convertir a mayúsculas
                 authorities.add(new SimpleGrantedAuthority(role.toUpperCase()));
             }
             

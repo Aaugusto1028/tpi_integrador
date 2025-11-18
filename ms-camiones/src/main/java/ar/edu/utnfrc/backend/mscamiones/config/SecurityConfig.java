@@ -11,13 +11,13 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.util.Collection;
-import java.util.Collections; // Asegúrate de importar Collections
+import java.util.Collections; 
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Esto ya lo tenías bien
+@EnableMethodSecurity // Habilitado para @PreAuthorize
 public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -41,21 +41,19 @@ public class SecurityConfig {
         
         jwtConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
             Map<String, Collection<String>> realmAccess = jwt.getClaim("realm_access");
-            // ARREGLO: Añadido chequeo de nulo
             if (realmAccess == null) {
                 return Collections.emptyList();
             }
             
             Collection<String> roles = realmAccess.get("roles");
-            
-            // ARREGLO: Añadido chequeo de nulo
             if (roles == null) {
                 return Collections.emptyList();
             }
 
             return roles.stream()
-                        // ARREGLO CLAVE: Convertir a mayúsculas
+                        // CORRECCIÓN CLAVE: Convertir a mayúsculas
                         .map(String::toUpperCase)
+                        // NO agregar "ROLE_"
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());
         });

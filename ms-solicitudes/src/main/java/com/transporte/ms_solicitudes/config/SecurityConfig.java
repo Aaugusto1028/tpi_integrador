@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Esto ya lo tenías bien
+@EnableMethodSecurity // Habilitado para @PreAuthorize
 public class SecurityConfig {
     
     @Bean
@@ -27,7 +27,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
-                // Le decimos que use nuestro conversor
+                // ¡CORREGIDO! Le decimos que use nuestro conversor
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())) 
             ) 
             .csrf(csrf -> csrf.disable());
@@ -35,7 +35,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ¡NUEVO! Este Bean faltaba por completo
+    // ¡CORREGIDO! Este Bean faltaba por completo
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
@@ -53,8 +53,9 @@ public class SecurityConfig {
 
             return roles.stream()
                     .map(Object::toString)
-                    // ARREGLO CLAVE: Convertir a mayúsculas
+                    // CORRECCIÓN CLAVE: Convertir a mayúsculas
                     .map(String::toUpperCase) 
+                    // NO agregar "ROLE_" aquí, Spring lo hace solo
                     .map(SimpleGrantedAuthority::new) 
                     .collect(Collectors.toList());
         });
