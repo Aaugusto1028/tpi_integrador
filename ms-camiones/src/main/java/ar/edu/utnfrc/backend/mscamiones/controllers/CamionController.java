@@ -2,6 +2,7 @@ package ar.edu.utnfrc.backend.mscamiones.controllers;
 
 import ar.edu.utnfrc.backend.mscamiones.dtos.TramoDTO; // Import para el DTO
 import ar.edu.utnfrc.backend.mscamiones.dtos.PromediosDTO;
+import ar.edu.utnfrc.backend.mscamiones.dtos.CamionDetalleDTO;
 import ar.edu.utnfrc.backend.mscamiones.models.Camion;
 import ar.edu.utnfrc.backend.mscamiones.services.CamionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -96,5 +97,19 @@ public class CamionController {
 
         PromediosDTO promedios = camionService.obtenerPromedios(peso, volumen);
         return ResponseEntity.ok(promedios);
+    }
+
+    /**
+     * Endpoint: GET /camiones/detalle/{patente}
+     * Expone datos específicos de un camión para que ms-rutas calcule costos reales.
+     * No requiere autenticación para que ms-rutas pueda acceder sin token.
+     */
+    @GetMapping("/detalle/{patente}")
+    public ResponseEntity<CamionDetalleDTO> getDetalleCamion(@PathVariable String patente) {
+        CamionDetalleDTO detalle = camionService.obtenerDetalleCamion(patente);
+        if (detalle == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(detalle);
     }
 }

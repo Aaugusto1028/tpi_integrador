@@ -13,7 +13,7 @@ public class CamionesWebClient {
     @Autowired
     private WebClient webClient;
 
-    private static final String MS_CAMIONES_URL = "http://ms-camiones:8082/camiones";
+    private static final String MS_CAMIONES_URL = "http://ms-camiones:8083/camiones";
 
     public PromediosDTO obtenerPromedios(BigDecimal peso, BigDecimal volumen) {
         return webClient.get()

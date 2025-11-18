@@ -4,6 +4,10 @@ import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.AsignarCamionRequest;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.CrearRutaRequest;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.dominio.Ruta;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.dominio.Tramo;
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.TarifaDTO;
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.CostoTrasladoDTO;
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.TramoDTO;
+import java.util.List;
 
 public interface RutaService {
 
@@ -20,4 +24,16 @@ public interface RutaService {
 
     // Marcar una ruta como asignada (y notificar a ms-solicitudes si corresponde)
     ar.edu.utn.frc.tpi.grupo148.ms_rutas.dominio.Ruta asignarRuta(Long idRuta);
+
+    // Endpoint para exponer la tarifa vigente a otros servicios
+    TarifaDTO obtenerTarifas();
+
+    // Método para obtener el costo real de un traslado por idSolicitud (desglosado)
+    CostoTrasladoDTO obtenerCostoTrasladoRealPorSolicitud(Long idSolicitud);
+
+    // Método para obtener el costo real de un traslado por idRuta (desglosado)
+    CostoTrasladoDTO obtenerCostoTrasladoReal(Long idRuta);
+
+    // Método para obtener tramos asignados a una patente (devuelve TramoDTO con todos los datos)
+    List<TramoDTO> obtenerTramosAsignadosPorPatente(String patente);
 }

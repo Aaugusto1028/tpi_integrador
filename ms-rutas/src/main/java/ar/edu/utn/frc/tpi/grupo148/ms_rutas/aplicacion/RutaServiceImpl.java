@@ -4,6 +4,9 @@ import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.AsignarCamionRequest;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.CrearRutaRequest;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.dominio.*;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.repositorios.*;
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.TarifaDTO;
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.CostoTrasladoDTO;
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.TramoDTO;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -178,7 +181,7 @@ public class RutaServiceImpl implements RutaService {
      */
     private CamionDTO validarCamion(String patente, Double peso, Double volumen) {
         // Asumimos que "ms-camiones" es el nombre del servicio en Docker/Kubernetes
-        String url = String.format("http://ms-camiones:8083/camiones/%s", patente);
+        String url = String.format("http://ms-camiones:8083/camiones/detalle/%s", patente);
 
         CamionDTO camion;
         try {
@@ -208,7 +211,7 @@ public class RutaServiceImpl implements RutaService {
      * Llama al ms-camiones para obtener los datos de un camión (sin validar).
      */
     private CamionDTO buscarCamion(String patente) {
-        String url = String.format("http://ms-camiones:8083/camiones/%s", patente);
+        String url = String.format("http://ms-camiones:8083/camiones/detalle/%s", patente);
         try {
             CamionDTO camion = webClientBuilder.build().get()
                     .uri(url)
@@ -285,12 +288,215 @@ public class RutaServiceImpl implements RutaService {
 
         // Intentamos notificar a ms-solicitudes para confirmar la ruta (best-effort)
         try {
-            String url = String.format("http://ms-solicitudes:8082/solicitudes/%d/confirmar-ruta", ruta.getIdSolicitud());
+            String url = String.format("http://ms-solicitudes:8081/solicitudes/%d/confirmar-ruta", ruta.getIdSolicitud());
             webClientBuilder.build().post().uri(url).retrieve().bodyToMono(Void.class).block(Duration.ofSeconds(5));
         } catch (Exception ignored) {
             // best-effort: si falla la notificación no interrumpimos el flujo
         }
 
         return guardada;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TarifaDTO obtenerTarifas() {
+        java.util.List<Tarifa> tarifas = tarifaRepository.findAll();
+        TarifaDTO dto = new TarifaDTO();
+        if (tarifas == null || tarifas.isEmpty()) {
+            dto.setPrecioLitro(java.math.BigDecimal.ZERO);
+            dto.setCostoEstadiaDiario(java.math.BigDecimal.ZERO);
+            return dto;
+        }
+        Tarifa primera = tarifas.get(0);
+        dto.setPrecioLitro(primera.getPrecioLitro() != null ? primera.getPrecioLitro() : java.math.BigDecimal.ZERO);
+        dto.setCostoEstadiaDiario(java.math.BigDecimal.ZERO);
+        return dto;
+    }
+
+    /**
+     * Obtiene el costo real desglosado de un traslado (ruta con tramos) por idSolicitud.
+     * Suma los costos de todos los tramos asignados y finalizados.
+     * @param idSolicitud ID de la solicitud (para buscar su ruta asociada)
+     * @return CostoTrasladoDTO con desglose de costos
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public CostoTrasladoDTO obtenerCostoTrasladoRealPorSolicitud(Long idSolicitud) {
+        // Buscar la ruta asociada a esta solicitud
+        java.util.List<Ruta> rutas = rutaRepository.findByIdSolicitud(idSolicitud);
+        if (rutas == null || rutas.isEmpty()) {
+            // Si no hay ruta, devolver costos cero
+            return new CostoTrasladoDTO(
+                    java.math.BigDecimal.ZERO,
+                    java.math.BigDecimal.ZERO,
+                    java.math.BigDecimal.ZERO,
+                    java.math.BigDecimal.ZERO
+            );
+        }
+
+        // Usar la primera ruta (normalmente habrá una sola)
+        Ruta ruta = rutas.get(0);
+
+        java.util.List<Tramo> tramos = ruta.getTramos();
+        if (tramos == null || tramos.isEmpty()) {
+            return new CostoTrasladoDTO(
+                    java.math.BigDecimal.ZERO,
+                    java.math.BigDecimal.ZERO,
+                    java.math.BigDecimal.ZERO,
+                    java.math.BigDecimal.ZERO
+            );
+        }
+
+        BigDecimal costoKmTotal = java.math.BigDecimal.ZERO;
+        BigDecimal costoCombustibleTotal = java.math.BigDecimal.ZERO;
+        BigDecimal costoEstadiaTotal = java.math.BigDecimal.ZERO;
+
+        Tarifa tarifaBase = tarifaRepository.findById(1L)
+                .orElseThrow(() -> new EntityNotFoundException("Tarifa base no encontrada"));
+
+        for (Tramo tramo : tramos) {
+            if (tramo.getPatenteCamionAsignado() == null || tramo.getDistanciaKm() == null) {
+                continue; // Saltar tramos sin camión asignado o distancia
+            }
+
+            try {
+                // Obtener datos del camión desde ms-camiones
+                CamionDTO camion = buscarCamion(tramo.getPatenteCamionAsignado());
+
+                // Calcular costos para este tramo
+                BigDecimal costoKmTramo = camion.getCostoPorKm()
+                        .multiply(java.math.BigDecimal.valueOf(tramo.getDistanciaKm()));
+                costoKmTotal = costoKmTotal.add(costoKmTramo);
+
+                double consumoTotalLitros = camion.getConsumoCombustibleKm() * tramo.getDistanciaKm();
+                BigDecimal costoCombustibleTramo = tarifaBase.getPrecioLitro()
+                        .multiply(java.math.BigDecimal.valueOf(consumoTotalLitros));
+                costoCombustibleTotal = costoCombustibleTotal.add(costoCombustibleTramo);
+
+                // Costo de estadía (simplificado: precio del depósito destino)
+                if (tramo.getDepositoDestino() != null && tramo.getDepositoDestino().getPrecioEstadia() != null) {
+                    costoEstadiaTotal = costoEstadiaTotal.add(tramo.getDepositoDestino().getPrecioEstadia());
+                }
+            } catch (Exception e) {
+                // Si falla el cálculo para un tramo, lo registramos pero continuamos
+                System.err.println("Error calculando costo para tramo " + tramo.getId() + ": " + e.getMessage());
+            }
+        }
+
+        BigDecimal costoTotal = costoKmTotal.add(costoCombustibleTotal).add(costoEstadiaTotal);
+
+        return new CostoTrasladoDTO(
+                costoKmTotal,
+                costoCombustibleTotal,
+                costoEstadiaTotal,
+                costoTotal
+        );
+    }
+
+    /**
+     * Obtiene el costo real desglosado de un traslado por idRuta.
+     * Suma los costos de todos los tramos asignados y finalizados.
+     * @param idRuta ID de la ruta
+     * @return CostoTrasladoDTO con desglose de costos
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public CostoTrasladoDTO obtenerCostoTrasladoReal(Long idRuta) {
+        Ruta ruta = rutaRepository.findById(idRuta)
+                .orElseThrow(() -> new EntityNotFoundException("Ruta no encontrada: " + idRuta));
+
+        java.util.List<Tramo> tramos = ruta.getTramos();
+        if (tramos == null || tramos.isEmpty()) {
+            return new CostoTrasladoDTO(
+                    java.math.BigDecimal.ZERO,
+                    java.math.BigDecimal.ZERO,
+                    java.math.BigDecimal.ZERO,
+                    java.math.BigDecimal.ZERO
+            );
+        }
+
+        BigDecimal costoKmTotal = java.math.BigDecimal.ZERO;
+        BigDecimal costoCombustibleTotal = java.math.BigDecimal.ZERO;
+        BigDecimal costoEstadiaTotal = java.math.BigDecimal.ZERO;
+
+        Tarifa tarifaBase = tarifaRepository.findById(1L)
+                .orElseThrow(() -> new EntityNotFoundException("Tarifa base no encontrada"));
+
+        for (Tramo tramo : tramos) {
+            if (tramo.getPatenteCamionAsignado() == null || tramo.getDistanciaKm() == null) {
+                continue;
+            }
+
+            try {
+                CamionDTO camion = buscarCamion(tramo.getPatenteCamionAsignado());
+
+                BigDecimal costoKmTramo = camion.getCostoPorKm()
+                        .multiply(java.math.BigDecimal.valueOf(tramo.getDistanciaKm()));
+                costoKmTotal = costoKmTotal.add(costoKmTramo);
+
+                double consumoTotalLitros = camion.getConsumoCombustibleKm() * tramo.getDistanciaKm();
+                BigDecimal costoCombustibleTramo = tarifaBase.getPrecioLitro()
+                        .multiply(java.math.BigDecimal.valueOf(consumoTotalLitros));
+                costoCombustibleTotal = costoCombustibleTotal.add(costoCombustibleTramo);
+
+                if (tramo.getDepositoDestino() != null && tramo.getDepositoDestino().getPrecioEstadia() != null) {
+                    costoEstadiaTotal = costoEstadiaTotal.add(tramo.getDepositoDestino().getPrecioEstadia());
+                }
+            } catch (Exception e) {
+                System.err.println("Error calculando costo para tramo " + tramo.getId() + ": " + e.getMessage());
+            }
+        }
+
+        BigDecimal costoTotal = costoKmTotal.add(costoCombustibleTotal).add(costoEstadiaTotal);
+
+        return new CostoTrasladoDTO(
+                costoKmTotal,
+                costoCombustibleTotal,
+                costoEstadiaTotal,
+                costoTotal
+        );
+    }
+
+    /**
+     * Obtiene todos los tramos asignados a una patente específica
+     * y los convierte a TramoDTO.
+     * @param patenteCamion Patente del camión
+     * @return Lista de TramoDTO con todos los datos de los tramos asignados
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<TramoDTO> obtenerTramosAsignadosPorPatente(String patenteCamion) {
+        List<Tramo> tramos = tramoRepository.findByPatenteCamionAsignado(patenteCamion);
+        List<TramoDTO> tramosDTO = new ArrayList<>();
+
+        if (tramos == null || tramos.isEmpty()) {
+            return tramosDTO;
+        }
+
+        for (Tramo tramo : tramos) {
+            TramoDTO dto = new TramoDTO();
+            dto.setId(tramo.getId());
+            dto.setOrigen(tramo.getDepositoOrigen() != null ? tramo.getDepositoOrigen().getNombre() : null);
+            dto.setDestino(tramo.getDepositoDestino() != null ? tramo.getDepositoDestino().getNombre() : null);
+            dto.setEstado(tramo.getEstadoTramo() != null ? tramo.getEstadoTramo().getNombre() : null);
+            dto.setPatenteCamionAsignado(tramo.getPatenteCamionAsignado());
+            dto.setDistanciaKm(tramo.getDistanciaKm());
+            dto.setCostoAproximado(tramo.getCostoAproximado());
+            dto.setCostoReal(tramo.getCostoReal());
+            dto.setFechaHoraInicio(tramo.getFechaHoraInicio());
+            dto.setFechaHoraFin(tramo.getFechaHoraFin());
+            
+            // Precios de estadía de depósitos
+            if (tramo.getDepositoOrigen() != null) {
+                dto.setPrecioEstadiaOrigen(tramo.getDepositoOrigen().getPrecioEstadia());
+            }
+            if (tramo.getDepositoDestino() != null) {
+                dto.setPrecioEstadiaDestino(tramo.getDepositoDestino().getPrecioEstadia());
+            }
+
+            tramosDTO.add(dto);
+        }
+
+        return tramosDTO;
     }
 }

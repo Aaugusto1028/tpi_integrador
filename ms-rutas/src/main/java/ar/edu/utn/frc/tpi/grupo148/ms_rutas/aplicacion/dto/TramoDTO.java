@@ -1,14 +1,15 @@
-package ar.edu.utnfrc.backend.mscamiones.dtos;
+package ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto;
 
-// DTO que representa un Tramo devuelto por el Microservicio de Rutas.
-// Incluye todos los datos necesarios para que ms-camiones/ms-solicitudes
-// puedan calcular costos y tiempos.
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * DTO que representa un Tramo con todos los datos necesarios
+ * para que ms-camiones o ms-solicitudes puedan calcular costos y tiempos.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,4 +27,3 @@ public class TramoDTO {
     private BigDecimal precioEstadiaOrigen;     // Precio de estadía en depósito origen
     private BigDecimal precioEstadiaDestino;    // Precio de estadía en depósito destino
 }
-

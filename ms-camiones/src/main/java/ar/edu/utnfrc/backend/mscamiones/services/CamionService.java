@@ -2,6 +2,7 @@ package ar.edu.utnfrc.backend.mscamiones.services;
 
 import ar.edu.utnfrc.backend.mscamiones.dtos.TramoDTO; // Nuevo: Importar el DTO creado
 import ar.edu.utnfrc.backend.mscamiones.dtos.PromediosDTO;
+import ar.edu.utnfrc.backend.mscamiones.dtos.CamionDetalleDTO;
 import ar.edu.utnfrc.backend.mscamiones.models.Camion;
 import ar.edu.utnfrc.backend.mscamiones.repositories.CamionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,11 +82,9 @@ public class CamionService {
     public List<TramoDTO> getTramosPorTransportista(String patenteCamionAsignado, String jwtToken) {
         
         // El método hace la llamada HTTP con WebClient al ms-rutas
-        // Se espera que ms-rutas tenga el endpoint: GET /tramos?patenteCamion=...
+        // Endpoint: GET /rutas/patente/{patenteCamion}/tramos
         return webClientRutas.get()
-                .uri(uriBuilder -> uriBuilder.path("/tramos")
-                        .queryParam("patenteCamion", patenteCamionAsignado)
-                        .build())
+                .uri("/rutas/patente/{patenteCamion}/tramos", patenteCamionAsignado)
                 // Añade el token de seguridad para la autenticación en ms-rutas
                 .header("Authorization", "Bearer " + jwtToken) 
                 
@@ -132,5 +131,27 @@ public class CamionService {
             java.math.BigDecimal promedioConsumo = sumaConsumo.divide(count, 6, java.math.RoundingMode.HALF_UP);
 
             return new PromediosDTO(promedioCosto, promedioConsumo);
+            }
+
+            /**
+             * Obtiene los datos detallados de un camión específico (por patente).
+             * Usado por ms-rutas para calcular costos reales de traslados.
+             * @param patente La patente del camión
+             * @return CamionDetalleDTO con los datos del camión, o null si no existe
+             */
+            public CamionDetalleDTO obtenerDetalleCamion(String patente) {
+                Optional<Camion> camion = repository.findById(patente);
+                if (camion.isEmpty()) {
+                    return null;
+                }
+                Camion c = camion.get();
+                CamionDetalleDTO dto = new CamionDetalleDTO();
+                dto.setPatente(c.getPatente());
+                dto.setCostoPorKm(c.getCostoPorKm() != null ? java.math.BigDecimal.valueOf(c.getCostoPorKm()) : java.math.BigDecimal.ZERO);
+                dto.setConsumoCombustibleKm(c.getConsumoCombustibleKm());
+                dto.setCapacidadPeso(c.getCapacidadPeso());
+                dto.setCapacidadVolumen(c.getCapacidadVolumen());
+                dto.setDisponibilidad(c.getDisponibilidad());
+                return dto;
             }
 }

@@ -11,7 +11,7 @@ public class RutasWebClient {
     @Autowired
     private WebClient webClient;
 
-    private static final String MS_RUTAS_URL = "http://ms-rutas:8081/rutas";
+    private static final String MS_RUTAS_URL = "http://ms-rutas:8082/rutas";
 
     public DistanciaDTO obtenerDistancia(double lat1, double lon1, double lat2, double lon2) {
         CoordenadasRequest request = new CoordenadasRequest(
@@ -41,6 +41,32 @@ public class RutasWebClient {
                 .uri(MS_RUTAS_URL + "/contenedores/{id}/ubicacion", idContenedor)
                 .retrieve()
                 .bodyToMono(String.class)
+                .block();
+    }
+
+    /**
+     * Obtiene el costo real desglosado de un traslado por idSolicitud.
+     * @param idSolicitud ID de la solicitud
+     * @return CostoTrasladoDTO con desglose (costo por km, combustible, estadía, total)
+     */
+    public CostoTrasladoDTO obtenerCostoTrasladoRealPorSolicitud(Long idSolicitud) {
+        return webClient.get()
+                .uri(MS_RUTAS_URL + "/solicitud/{idSolicitud}/costo-real", idSolicitud)
+                .retrieve()
+                .bodyToMono(CostoTrasladoDTO.class)
+                .block();
+    }
+
+    /**
+     * Obtiene el costo real desglosado de un traslado por idRuta.
+     * @param idRuta ID de la ruta
+     * @return CostoTrasladoDTO con desglose de costos
+     */
+    public CostoTrasladoDTO obtenerCostoTrasladoRealPorRuta(Long idRuta) {
+        return webClient.get()
+                .uri(MS_RUTAS_URL + "/ruta/{idRuta}/costo-real", idRuta)
+                .retrieve()
+                .bodyToMono(CostoTrasladoDTO.class)
                 .block();
     }
 }

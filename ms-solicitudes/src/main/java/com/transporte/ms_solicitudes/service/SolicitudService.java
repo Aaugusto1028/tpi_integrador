@@ -137,20 +137,33 @@ public class SolicitudService {
 
     /**
      * Finaliza una solicitud.
-     * (LÓGICA ACTUALIZADA)
+     * Intenta obtener el costo real desde ms-rutas usando el idSolicitud.
+     * Si falla, usa el costoFinal del DTO.
      */
     @Transactional
-    public SolicitudResponseDTO finalizarSolicitud(Long id, FinalizarSolicitudDTO dto) { // <-- CAMBIO 1: Recibe DTO
+    public SolicitudResponseDTO finalizarSolicitud(Long id, FinalizarSolicitudDTO dto) {
         Solicitud solicitud = solicitudRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Solicitud no encontrada"));
 
         solicitud.setEstado("ENTREGADA");
         
-        // CAMBIO 2: Usamos los valores reales del DTO, no los estimados
-        solicitud.setCostoFinal(dto.getCostoFinal());
+        // Determinar el costo final
+        BigDecimal costoFinal = dto.getCostoFinal();
+        try {
+            // Intentar obtener el costo real de ms-rutas usando el id de la solicitud
+            CostoTrasladoDTO costoTraslado = rutasWebClient.obtenerCostoTrasladoRealPorSolicitud(id);
+            if (costoTraslado != null && costoTraslado.getCostoTotal() != null) {
+                costoFinal = costoTraslado.getCostoTotal();
+            }
+        } catch (Exception e) {
+            // Si falla la obtención del costo real, usamos el del DTO
+            System.err.println("No se pudo obtener costo real de ms-rutas para idSolicitud=" + id + ": " + e.getMessage());
+        }
+        
+        solicitud.setCostoFinal(costoFinal);
         solicitud.setTiempoReal(dto.getTiempoReal());
 
-        // CAMBIO 3: Registramos el estado final en el historial del contenedor
+        // Registramos el estado final en el historial del contenedor
         actualizarEstadoContenedor(solicitud.getContenedor().getId(), "ENTREGADA");
 
         solicitudRepository.save(solicitud);
