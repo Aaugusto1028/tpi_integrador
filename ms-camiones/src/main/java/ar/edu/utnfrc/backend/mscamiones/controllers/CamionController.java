@@ -27,6 +27,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/camiones")
 @Tag(name = "Camiones", description = "Gestión de camiones y asignación a transportistas")
+public class CamionController {
 
     @Autowired
     private CamionService camionService; // Inyección del Servicio

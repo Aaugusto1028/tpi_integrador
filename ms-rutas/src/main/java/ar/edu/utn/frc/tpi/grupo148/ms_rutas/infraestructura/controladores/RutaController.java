@@ -34,6 +34,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RestController
 @RequestMapping("/rutas")
 @Tag(name = "Rutas", description = "Gestión de rutas de transporte")
+public class RutaController {
 
     @Autowired
     private RutaService rutaService;

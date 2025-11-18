@@ -25,6 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/solicitudes")
 @Tag(name = "Solicitudes", description = "Gestión de solicitudes de transporte")
+public class SolicitudController {
 
     @Autowired
     private SolicitudService solicitudService;
