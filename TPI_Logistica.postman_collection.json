@@ -1,11 +1,9 @@
 {
   "info": {
     "name": "TPI Logística",
-    "description": "Colección completa para probar la arquitectura de microservicios de logística con API Gateway, Keycloak y tres microservicios: ms-solicitudes, ms-rutas y ms-camiones.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "auth": {
-    "type": "noauth"
+    "description": "Colección para pruebas de la arquitectura: API Gateway + ms-solicitudes, ms-rutas, ms-camiones; Keycloak para auth.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
   },
   "item": [
     {
@@ -13,189 +11,80 @@
       "item": [
         {
           "name": "Obtener Token CLIENTE",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id", "value": "{{keycloakClient}}" },
+                { "key": "username", "value": "{{user_cliente}}" },
+                { "key": "password", "value": "{{pass_cliente}}" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/{{keycloakRealm}}/protocol/openid-connect/token",
+              "host": ["{{keycloakUrl}}"],
+              "path": ["realms","{{keycloakRealm}}","protocol","openid-connect","token"]
+            }
+          },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "var jsonData = pm.response.json();",
-                  "pm.environment.set(\"token_cliente\", jsonData.access_token);",
-                  "pm.test(\"Token CLIENTE obtenido correctamente\", function() {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200]);",
-                  "    pm.expect(jsonData.access_token).to.exist;",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "if (pm.response.code !== 200) {",
+                  "  pm.test('Token request failed', function(){pm.response.to.have.status(200);});",
+                  "} else {",
+                  "  var json = pm.response.json();",
+                  "  pm.collectionVariables.set('token_cliente', json.access_token);",
+                  "  pm.environment.set('token_cliente', json.access_token);",
+                  "  pm.test('Token saved', function(){pm.expect(json).to.have.property('access_token');});",
+                  "}"
+                ]
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "grant_type",
-                  "value": "password"
-                },
-                {
-                  "key": "client_id",
-                  "value": "{{keycloakClient}}"
-                },
-                {
-                  "key": "username",
-                  "value": "{{user_cliente}}"
-                },
-                {
-                  "key": "password",
-                  "value": "{{pass_cliente}}"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/{{keycloakRealm}}/protocol/openid-connect/token",
-              "host": [
-                "{{keycloakUrl}}"
-              ],
-              "path": [
-                "realms",
-                "{{keycloakRealm}}",
-                "protocol",
-                "openid-connect",
-                "token"
-              ]
-            }
-          }
+          ]
         },
         {
           "name": "Obtener Token OPERADOR",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "var jsonData = pm.response.json();",
-                  "pm.environment.set(\"token_operador\", jsonData.access_token);",
-                  "pm.test(\"Token OPERADOR obtenido correctamente\", function() {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200]);",
-                  "    pm.expect(jsonData.access_token).to.exist;",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ],
+            "header": [ { "key": "Content-Type", "value": "application/x-www-form-urlencoded" } ],
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
-                {
-                  "key": "grant_type",
-                  "value": "password"
-                },
-                {
-                  "key": "client_id",
-                  "value": "{{keycloakClient}}"
-                },
-                {
-                  "key": "username",
-                  "value": "{{user_operador}}"
-                },
-                {
-                  "key": "password",
-                  "value": "{{pass_operador}}"
-                }
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id", "value": "{{keycloakClient}}" },
+                { "key": "username", "value": "{{user_operador}}" },
+                { "key": "password", "value": "{{pass_operador}}" }
               ]
             },
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/{{keycloakRealm}}/protocol/openid-connect/token",
-              "host": [
-                "{{keycloakUrl}}"
-              ],
-              "path": [
-                "realms",
-                "{{keycloakRealm}}",
-                "protocol",
-                "openid-connect",
-                "token"
-              ]
-            }
-          }
+            "url": { "raw": "{{keycloakUrl}}/realms/{{keycloakRealm}}/protocol/openid-connect/token","host":["{{keycloakUrl}}"],"path":["realms","{{keycloakRealm}}","protocol","openid-connect","token"] }
+          },
+          "event": [ { "listen": "test", "script": { "exec": [ "if (pm.response.code !== 200) {","  pm.test('Token request failed', function(){pm.response.to.have.status(200);});","} else {","  var json = pm.response.json();","  pm.collectionVariables.set('token_operador', json.access_token);","  pm.environment.set('token_operador', json.access_token);","  pm.test('Token saved', function(){pm.expect(json).to.have.property('access_token');});","}" ] } } ]
         },
         {
           "name": "Obtener Token TRANSPORTISTA",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "var jsonData = pm.response.json();",
-                  "pm.environment.set(\"token_transportista\", jsonData.access_token);",
-                  "pm.test(\"Token TRANSPORTISTA obtenido correctamente\", function() {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200]);",
-                  "    pm.expect(jsonData.access_token).to.exist;",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ],
+            "header": [ { "key": "Content-Type", "value": "application/x-www-form-urlencoded" } ],
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
-                {
-                  "key": "grant_type",
-                  "value": "password"
-                },
-                {
-                  "key": "client_id",
-                  "value": "{{keycloakClient}}"
-                },
-                {
-                  "key": "username",
-                  "value": "{{user_transportista}}"
-                },
-                {
-                  "key": "password",
-                  "value": "{{pass_transportista}}"
-                }
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id", "value": "{{keycloakClient}}" },
+                { "key": "username", "value": "{{user_transportista}}" },
+                { "key": "password", "value": "{{pass_transportista}}" }
               ]
             },
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/{{keycloakRealm}}/protocol/openid-connect/token",
-              "host": [
-                "{{keycloakUrl}}"
-              ],
-              "path": [
-                "realms",
-                "{{keycloakRealm}}",
-                "protocol",
-                "openid-connect",
-                "token"
-              ]
-            }
-          }
+            "url": { "raw": "{{keycloakUrl}}/realms/{{keycloakRealm}}/protocol/openid-connect/token","host":["{{keycloakUrl}}"],"path":["realms","{{keycloakRealm}}","protocol","openid-connect","token"] }
+          },
+          "event": [ { "listen": "test", "script": { "exec": [ "if (pm.response.code !== 200) {","  pm.test('Token request failed', function(){pm.response.to.have.status(200);});","} else {","  var json = pm.response.json();","  pm.collectionVariables.set('token_transportista', json.access_token);","  pm.environment.set('token_transportista', json.access_token);","  pm.test('Token saved', function(){pm.expect(json).to.have.property('access_token');});","}" ] } } ]
         }
       ]
     },
@@ -204,1081 +93,180 @@
       "item": [
         {
           "name": "(CLIENTE) Crear Solicitud",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "var jsonData = pm.response.json();",
-                  "pm.collectionVariables.set(\"id_solicitud_creada\", jsonData.id);",
-                  "pm.test(\"Solicitud creada correctamente\", function() {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "    pm.expect(jsonData.id).to.exist;",
-                  "});",
-                  "console.log(\"ID Solicitud: \" + jsonData.id);"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_cliente}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_cliente}}", "type": "string" }] },
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"clienteDni\": \"12345678\",\n  \"pesoContenedor\": 500,\n  \"volumenContenedor\": 1000,\n  \"origenLatitud\": -31.4201,\n  \"origenLongitud\": -64.1888,\n  \"destinoLatitud\": -31.5350,\n  \"destinoLongitud\": -64.2637\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/solicitudes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "solicitudes"
-              ]
-            }
-          }
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"clienteDni\": \"12345678\",\n  \"pesoContenedor\": 500,\n  \"volumenContenedor\": 1000,\n  \"origenLatitud\": -31.4201,\n  \"origenLongitud\": -64.1888,\n  \"destinoLatitud\": -31.5350,\n  \"destinoLongitud\": -64.2637\n}" },
+            "url": { "raw": "{{baseUrl}}/solicitudes", "host": ["{{baseUrl}}"], "path": ["solicitudes"] }
+          },
+          "event": [ { "listen": "test", "script": { "exec": [ "pm.test('status 201 or 200', function(){pm.expect(pm.response.code).to.be.oneOf([200,201]);});","var json = pm.response.json();","if (json && json.id) {","  pm.collectionVariables.set('id_solicitud_creada', json.id);","  console.log('id_solicitud_creada =', json.id);","}","pm.test('response has id', function(){pm.expect(json).to.have.property('id');});" ] } } ]
         },
         {
           "name": "(OPERADOR) Crear Ruta",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "var jsonData = pm.response.json();",
-                  "pm.collectionVariables.set(\"id_ruta_creada\", jsonData.id);",
-                  "if (jsonData.tramos && jsonData.tramos.length > 0) {",
-                  "    pm.collectionVariables.set(\"id_tramo_1\", jsonData.tramos[0].id);",
-                  "}",
-                  "pm.test(\"Ruta creada correctamente\", function() {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "    pm.expect(jsonData.id).to.exist;",
-                  "});",
-                  "console.log(\"ID Ruta: \" + jsonData.id);"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"idSolicitud\": {{id_solicitud_creada}},\n  \"tramos\": [\n    {\n      \"idDepositoOrigen\": 1,\n      \"idDepositoDestino\": 2,\n      \"idTipoTramo\": 1\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/rutas",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "rutas"
-              ]
-            }
-          }
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"idSolicitud\": {{id_solicitud_creada}},\n  \"tramos\": [\n    { \"idDepositoOrigen\": 1, \"idDepositoDestino\": 2, \"idTipoTramo\": 1 }\n  ]\n}" },
+            "url": { "raw": "{{baseUrl}}/rutas", "host": ["{{baseUrl}}"], "path": ["rutas"] }
+          },
+          "event": [ { "listen": "test", "script": { "exec": [ "pm.test('status 201 or 200', function(){pm.expect(pm.response.code).to.be.oneOf([200,201]);});","var json = pm.response.json();","if (json && json.id) { pm.collectionVariables.set('id_ruta_creada', json.id); }","if (json && json.tramos && json.tramos.length) {","  pm.collectionVariables.set('id_tramo_1', json.tramos[0].id || json.tramos[0].idTramo || json.tramos[0].id_tramo);","}","pm.test('ruta response has id', function(){pm.expect(json).to.have.property('id');});" ] } } ]
         },
         {
           "name": "(OPERADOR) Asignar Camión a Tramo",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Camión asignado correctamente al tramo\", function() {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
             "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"patenteCamion\": \"ABC123\",\n  \"pesoContenedor\": 500,\n  \"volumenContenedor\": 1000\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/tramos/{{id_tramo_1}}/asignar-camion",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "tramos",
-                "{{id_tramo_1}}",
-                "asignar-camion"
-              ]
-            }
-          }
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"patenteCamion\": \"ABC123\",\n  \"pesoContenedor\": 500,\n  \"volumenContenedor\": 1000\n}" },
+            "url": { "raw": "{{baseUrl}}/tramos/{{id_tramo_1}}/asignar-camion", "host": ["{{baseUrl}}"], "path": ["tramos","{{id_tramo_1}}","asignar-camion"] }
+          },
+          "event": [ { "listen": "test", "script": { "exec": [ "pm.test('status 200', function(){pm.expect(pm.response.code).to.be.oneOf([200,204]);});","pm.collectionVariables.set('patente_usada', 'ABC123');" ] } } ]
         },
         {
           "name": "(TRANSPORTISTA) Iniciar Tramo",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Tramo iniciado correctamente\", function() {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_transportista}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_transportista}}", "type": "string" }] },
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/tramos/{{id_tramo_1}}/iniciar",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "tramos",
-                "{{id_tramo_1}}",
-                "iniciar"
-              ]
-            }
-          }
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/tramos/{{id_tramo_1}}/iniciar", "host": ["{{baseUrl}}"], "path": ["tramos","{{id_tramo_1}}","iniciar"] }
+          },
+          "event": [ { "listen": "test", "script": { "exec": [ "pm.test('status ok', function(){pm.expect(pm.response.code).to.be.oneOf([200,204]);});","pm.collectionVariables.set('tramo_iniciado', '{{id_tramo_1}}');" ] } } ]
         },
         {
           "name": "(TRANSPORTISTA) Finalizar Tramo",
-          "event": [
-            {
-              "listen": "test",
-              "script": [
-                "pm.test(\"Tramo finalizado correctamente\", function() {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                "});"
-              ]
-            }
-          ],
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_transportista}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_transportista}}", "type": "string" }] },
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/tramos/{{id_tramo_1}}/finalizar",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "tramos",
-                "{{id_tramo_1}}",
-                "finalizar"
-              ]
-            }
-          }
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/tramos/{{id_tramo_1}}/finalizar", "host": ["{{baseUrl}}"], "path": ["tramos","{{id_tramo_1}}","finalizar"] }
+          },
+          "event": [ { "listen": "test", "script": { "exec": [ "pm.test('status ok', function(){pm.expect(pm.response.code).to.be.oneOf([200,204]);});","pm.collectionVariables.set('tramo_finalizado', '{{id_tramo_1}}');" ] } } ]
         },
         {
           "name": "(OPERADOR) Finalizar Solicitud",
-          "event": [
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"fechaFinalizacion\": \"2025-11-17T18:00:00Z\" }" },
+            "url": { "raw": "{{baseUrl}}/solicitudes/{{id_solicitud_creada}}/finalizar", "host": ["{{baseUrl}}"], "path": ["solicitudes","{{id_solicitud_creada}}","finalizar"] }
+          },
+          "event": [ { "listen": "test", "script": { "exec": [ "pm.test('status ok', function(){pm.expect(pm.response.code).to.be.oneOf([200,204]);});" ] } } ]
+        }
+      ]
+    },
+    {
+      "name": "3. Endpoints (CRUD)",
+      "item": [
+        {
+          "name": "ms-solicitudes",
+          "item": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Solicitud finalizada correctamente\", function() {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
+              "name": "Crear Solicitud (CRUD)",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_cliente}}", "type": "string" }] },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"clienteDni\": \"87654321\",\n  \"pesoContenedor\": 750,\n  \"volumenContenedor\": 1500,\n  \"origenLatitud\": -31.4201,\n  \"origenLongitud\": -64.1888,\n  \"destinoLatitud\": -31.5350,\n  \"destinoLongitud\": -64.2637\n}" },
+                "url": { "raw": "{{baseUrl}}/solicitudes", "host": ["{{baseUrl}}"], "path": ["solicitudes"] }
+              },
+              "event": [ { "listen": "test", "script": { "exec": [ "var json = pm.response.json();","if (json && json.id) { pm.collectionVariables.set('id_solicitud_creada', json.id); }" ] } } ]
+            },
+            {
+              "name": "Listar Solicitudes",
+              "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] }, "method": "GET", "url": { "raw": "{{baseUrl}}/solicitudes", "host": ["{{baseUrl}}"], "path": ["solicitudes"] } }
+            },
+            {
+              "name": "Obtener Solicitud por ID",
+              "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] }, "method": "GET", "url": { "raw": "{{baseUrl}}/solicitudes/{{id_solicitud_creada}}", "host": ["{{baseUrl}}"], "path": ["solicitudes","{{id_solicitud_creada}}"] } }
+            },
+            {
+              "name": "Obtener Estado de Solicitud",
+              "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] }, "method": "GET", "url": { "raw": "{{baseUrl}}/solicitudes/{{id_solicitud_creada}}/estado", "host": ["{{baseUrl}}"], "path": ["solicitudes","{{id_solicitud_creada}}","estado"] } }
             }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"fechaFinalizacion\": \"2025-11-17T18:00:00Z\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/solicitudes/{{id_solicitud_creada}}/finalizar",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "solicitudes",
-                "{{id_solicitud_creada}}",
-                "finalizar"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "3. CRUD - ms-solicitudes",
-      "item": [
-        {
-          "name": "Crear Solicitud",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_cliente}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"clienteDni\": \"87654321\",\n  \"pesoContenedor\": 750,\n  \"volumenContenedor\": 1500,\n  \"origenLatitud\": -31.4201,\n  \"origenLongitud\": -64.1888,\n  \"destinoLatitud\": -31.5350,\n  \"destinoLongitud\": -64.2637\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/solicitudes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "solicitudes"
-              ]
-            }
-          }
+          ]
         },
         {
-          "name": "Listar Solicitudes",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
+          "name": "ms-rutas",
+          "item": [
+            {
+              "name": "Crear Ruta (CRUD)",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"idSolicitud\": {{id_solicitud_creada}},\n  \"tramos\": [{ \"idDepositoOrigen\": 1, \"idDepositoDestino\": 2, \"idTipoTramo\": 1 }]\n}" },
+                "url": { "raw": "{{baseUrl}}/rutas", "host": ["{{baseUrl}}"], "path": ["rutas"] }
+              },
+              "event": [ { "listen": "test", "script": { "exec": [ "var json = pm.response.json();","if (json && json.id) { pm.collectionVariables.set('id_ruta_creada', json.id); }","if (json && json.tramos && json.tramos.length) { pm.collectionVariables.set('id_tramo_1', json.tramos[0].id || json.tramos[0].idTramo); }" ] } } ]
             },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/solicitudes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "solicitudes"
-              ],
-              "query": [
-                {
-                  "key": "estado",
-                  "value": "PENDIENTE",
-                  "disabled": true
-                }
-              ]
+            {
+              "name": "Listar Rutas (Paginado)",
+              "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token_operador", "value": "{{token_operador}}", "type": "string" }] }, "method": "GET", "url": { "raw": "{{baseUrl}}/rutas?page=0&size=20", "host": ["{{baseUrl}}"], "path": ["rutas"], "query": [{ "key":"page","value":"0"},{ "key":"size","value":"20"}] } }
+            },
+            {
+              "name": "Obtener Rutas por Solicitud",
+              "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] }, "method": "GET", "url": { "raw": "{{baseUrl}}/rutas/solicitud/{{id_solicitud_creada}}", "host": ["{{baseUrl}}"], "path": ["rutas","solicitud","{{id_solicitud_creada}}"] } }
+            },
+            {
+              "name": "Obtener Ruta por ID",
+              "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] }, "method": "GET", "url": { "raw": "{{baseUrl}}/rutas/{{id_ruta_creada}}", "host": ["{{baseUrl}}"], "path": ["rutas","{{id_ruta_creada}}"] } }
+            },
+            {
+              "name": "Asignar Ruta",
+              "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] }, "method": "POST", "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/rutas/{{id_ruta_creada}}/asignar", "host": ["{{baseUrl}}"], "path": ["rutas","{{id_ruta_creada}}","asignar"] } }
+            },
+            {
+              "name": "Obtener Costo de Traslado Real",
+              "request": { "method": "GET", "auth": { "type": "noauth" }, "url": { "raw": "{{baseUrl}}/rutas/solicitud/{{id_solicitud_creada}}/costo-real", "host": ["{{baseUrl}}"], "path": ["rutas","solicitud","{{id_solicitud_creada}}","costo-real"] } }
+            },
+            {
+              "name": "Obtener Tarifas Vigentes",
+              "request": { "method": "GET", "auth": { "type": "noauth" }, "url": { "raw": "{{baseUrl}}/rutas/tarifas", "host": ["{{baseUrl}}"], "path": ["rutas","tarifas"] } }
+            },
+            {
+              "name": "Asignar Camión a Tramo (ms-rutas)",
+              "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] }, "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"patenteCamion\": \"ABC123\",\n  \"pesoContenedor\": 500,\n  \"volumenContenedor\": 1000\n}" }, "url": { "raw": "{{baseUrl}}/tramos/{{id_tramo_1}}/asignar-camion", "host": ["{{baseUrl}}"], "path": ["tramos","{{id_tramo_1}}","asignar-camion"] } }
+            },
+            {
+              "name": "Iniciar Tramo (ms-rutas)",
+              "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_transportista}}", "type": "string" }] }, "method": "POST", "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/tramos/{{id_tramo_1}}/iniciar", "host": ["{{baseUrl}}"], "path": ["tramos","{{id_tramo_1}}","iniciar"] } }
+            },
+            {
+              "name": "Finalizar Tramo (ms-rutas)",
+              "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_transportista}}", "type": "string" }] }, "method": "POST", "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/tramos/{{id_tramo_1}}/finalizar", "host": ["{{baseUrl}}"], "path": ["tramos","{{id_tramo_1}}","finalizar"] } }
             }
-          }
+          ]
         },
         {
-          "name": "Obtener Solicitud por ID",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_cliente}}",
-                  "type": "string"
-                }
-              ]
+          "name": "ms-camiones",
+          "item": [
+            {
+              "name": "Crear Camión",
+              "request": { "method": "POST", "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] }, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"patente\": \"ABC123\",\n  \"modelo\": \"Volvo FH16\",\n  \"capacidadPeso\": 25000,\n  \"capacidadVolumen\": 80,\n  \"disponible\": true\n}" }, "url": { "raw": "{{baseUrl}}/camiones", "host": ["{{baseUrl}}"], "path": ["camiones"] } }
             },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/solicitudes/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "solicitudes",
-                "1"
-              ]
+            {
+              "name": "Listar Camiones",
+              "request": { "method": "GET", "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] }, "url": { "raw": "{{baseUrl}}/camiones", "host": ["{{baseUrl}}"], "path": ["camiones"] } }
+            },
+            {
+              "name": "Obtener Camiones Aptos",
+              "request": { "method": "GET", "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] }, "url": { "raw": "{{baseUrl}}/camiones/aptos", "host": ["{{baseUrl}}"], "path": ["camiones","aptos"] } }
             }
-          }
-        },
-        {
-          "name": "Obtener Estado de Solicitud",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_cliente}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/solicitudes/1/estado",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "solicitudes",
-                "1",
-                "estado"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Actualizar Estado Contenedor",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"estado\": \"EN_TRANSITO\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/solicitudes/contenedores/1/estado",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "solicitudes",
-                "contenedores",
-                "1",
-                "estado"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Crear Cliente",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_cliente}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": null,\n  \"nombre\": \"Juan García\",\n  \"dni\": \"12345678\",\n  \"email\": \"juan@example.com\",\n  \"telefono\": \"+54 351 123-4567\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/clientes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "clientes"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Obtener Cliente por ID",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_cliente}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/clientes/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "clientes",
-                "1"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "4. CRUD - ms-rutas",
-      "item": [
-        {
-          "name": "Crear Ruta",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"idSolicitud\": 1,\n  \"tramos\": [\n    {\n      \"idDepositoOrigen\": 1,\n      \"idDepositoDestino\": 2,\n      \"idTipoTramo\": 1\n    },\n    {\n      \"idDepositoOrigen\": 2,\n      \"idDepositoDestino\": 3,\n      \"idTipoTramo\": 2\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/rutas",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "rutas"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Listar Rutas (Paginado)",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/rutas?page=0&size=20",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "rutas"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "0"
-                },
-                {
-                  "key": "size",
-                  "value": "20"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Obtener Rutas por Solicitud",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/rutas/solicitud/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "rutas",
-                "solicitud",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Obtener Ruta por ID",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/rutas/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "rutas",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Asignar Ruta",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/rutas/1/asignar",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "rutas",
-                "1",
-                "asignar"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Obtener Costo de Traslado Real",
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/rutas/solicitud/1/costo-real",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "rutas",
-                "solicitud",
-                "1",
-                "costo-real"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Obtener Tarifas Vigentes",
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/rutas/tarifas",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "rutas",
-                "tarifas"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Asignar Camión a Tramo",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"patenteCamion\": \"ABC123\",\n  \"pesoContenedor\": 500,\n  \"volumenContenedor\": 1000\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/tramos/1/asignar-camion",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "tramos",
-                "1",
-                "asignar-camion"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Iniciar Tramo",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_transportista}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/tramos/1/iniciar",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "tramos",
-                "1",
-                "iniciar"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Finalizar Tramo",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_transportista}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/tramos/1/finalizar",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "tramos",
-                "1",
-                "finalizar"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Listar Tramos por Patente",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_transportista}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/tramos?patenteCamion=ABC123&estadoId=2&page=0&size=20",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "tramos"
-              ],
-              "query": [
-                {
-                  "key": "patenteCamion",
-                  "value": "ABC123"
-                },
-                {
-                  "key": "estadoId",
-                  "value": "2",
-                  "disabled": true
-                },
-                {
-                  "key": "page",
-                  "value": "0"
-                },
-                {
-                  "key": "size",
-                  "value": "20"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Obtener Tramos por Patente (públicos)",
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/rutas/patente/ABC123/tramos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "rutas",
-                "patente",
-                "ABC123",
-                "tramos"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "5. CRUD - ms-camiones",
-      "item": [
-        {
-          "name": "Crear Camión",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"patente\": \"ABC123\",\n  \"modelo\": \"Volvo FH16\",\n  \"capacidadPeso\": 25000,\n  \"capacidadVolumen\": 80,\n  \"disponible\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/camiones",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "camiones"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Listar Camiones",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/camiones",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "camiones"
-              ],
-              "query": [
-                {
-                  "key": "disponibilidad",
-                  "value": "true",
-                  "disabled": true
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Obtener Camiones Aptos",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_operador}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/camiones/buscar-apto?peso=500&volumen=1000",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "camiones",
-                "buscar-apto"
-              ],
-              "query": [
-                {
-                  "key": "peso",
-                  "value": "500"
-                },
-                {
-                  "key": "volumen",
-                  "value": "1000"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Obtener Tramos del Transportista",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_transportista}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/camiones/transportistas/me/tramos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "camiones",
-                "transportistas",
-                "me",
-                "tramos"
-              ]
-            }
-          }
+          ]
         }
       ]
     }
   ],
+  "event": [],
   "variable": [
-    {
-      "key": "id_solicitud_creada",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "id_ruta_creada",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "id_tramo_1",
-      "value": "",
-      "type": "string"
-    }
+    { "key": "id_solicitud_creada", "value": "" },
+    { "key": "id_ruta_creada", "value": "" },
+    { "key": "id_tramo_1", "value": "" },
+    { "key": "patente_usada", "value": "" }
   ]
 }
