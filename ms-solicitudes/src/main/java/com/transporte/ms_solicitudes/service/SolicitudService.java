@@ -55,18 +55,18 @@ public class SolicitudService {
 
         // 2. Crear contenedor (lógica existente)
         Contenedor contenedor = new Contenedor();
-        contenedor.setPeso(dto.getPesoContenedor());
-        contenedor.setVolumen(dto.getVolumenContenedor());
+        contenedor.setPeso(BigDecimal.valueOf(dto.getPesoContenedor()));
+        contenedor.setVolumen(BigDecimal.valueOf(dto.getVolumenContenedor()));
         contenedor.setClienteAsociado(cliente);
 
         // 3. Crear solicitud (lógica existente)
         Solicitud solicitud = new Solicitud();
         solicitud.setCliente(cliente);
         solicitud.setContenedor(contenedor);
-        solicitud.setOrigenLatitud(dto.getOrigenLatitud());
-        solicitud.setOrigenLongitud(dto.getOrigenLongitud());
-        solicitud.setDestinoLatitud(dto.getDestinoLatitud());
-        solicitud.setDestinoLongitud(dto.getDestinoLongitud());
+        solicitud.setOrigenLatitud(BigDecimal.valueOf(dto.getOrigenLatitud()));
+        solicitud.setOrigenLongitud(BigDecimal.valueOf(dto.getOrigenLongitud()));
+        solicitud.setDestinoLatitud(BigDecimal.valueOf(dto.getDestinoLatitud()));
+        solicitud.setDestinoLongitud(BigDecimal.valueOf(dto.getDestinoLongitud()));
         solicitud.setEstado("PENDIENTE"); // Estado inicial de la solicitud
 
         // 4. Calcular estimados (lógica existente, usa WebClient)
@@ -103,16 +103,15 @@ public class SolicitudService {
 
     /**
      * Calcula costo y tiempo estimado.
-     * (Lógica original - sin cambios, usa WebClient)
+     * Ahora recibe Double en lugar de BigDecimal para coincidir con SolicitudRequestDTO
      */
     private CostoTiempoDTO calcularCostoTiempoEstimado(
-            BigDecimal lat1, BigDecimal lon1, BigDecimal lat2, BigDecimal lon2,
-            BigDecimal peso, BigDecimal volumen) {
+            Double lat1, Double lon1, Double lat2, Double lon2,
+            Double peso, Double volumen) {
 
         // Obtener distancia de ms-rutas
         DistanciaDTO distancia = rutasWebClient.obtenerDistancia(
-                lat1.doubleValue(), lon1.doubleValue(),
-                lat2.doubleValue(), lon2.doubleValue()
+                lat1, lon1, lat2, lon2
         );
         BigDecimal distanciaKm = distancia.getDistanciaMetros().divide(new BigDecimal(1000));
 

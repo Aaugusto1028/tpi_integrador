@@ -21,7 +21,7 @@ public class TramoController {
      *
      */
     @PutMapping("/{id}/asignar-camion")
-    @PreAuthorize("hasAuthority('OPERADOR')")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<Tramo> asignarCamion(@PathVariable Long id, @RequestBody AsignarCamionRequest request) {
         Tramo tramo = rutaService.asignarCamionATramo(id, request);
         return ResponseEntity.ok(tramo);

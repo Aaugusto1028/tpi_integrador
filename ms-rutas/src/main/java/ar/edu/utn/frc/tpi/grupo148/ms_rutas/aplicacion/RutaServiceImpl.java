@@ -178,41 +178,79 @@ public class RutaServiceImpl implements RutaService {
 
     /**
      * Llama al ms-camiones para validar y obtener datos de un camión.
+     * Primero busca camiones disponibles que cumplan con los requisitos de peso/volumen,
+     * luego valida que la patente especificada sea una de ellas y que esté disponible.
      */
     private CamionDTO validarCamion(String patente, Double peso, Double volumen) {
-        // Asumimos que "ms-camiones" es el nombre del servicio en Docker/Kubernetes
-        String url = String.format("http://ms-camiones:8083/camiones/%s", patente);
-
-        CamionDTO camion;
+        // 1. Llamar a buscar-apto para encontrar camiones disponibles
+        String urlBuscarApto = String.format("http://ms-camiones:8083/camiones/buscar-apto?peso=%s&volumen=%s", peso, volumen);
+        
+        List<CamionDTO> camionesApts;
         try {
-            camion = webClientBuilder.build().get()
-                    .uri(url)
+            camionesApts = webClientBuilder.build().get()
+                    .uri(urlBuscarApto)
                     .retrieve()
-                    .bodyToMono(CamionDTO.class)
+                    .bodyToFlux(CamionDTO.class)
+                    .collectList()
                     .block(Duration.ofSeconds(5)); // Timeout de 5s
+            
+            if (camionesApts == null) {
+                camionesApts = new ArrayList<>();
+            }
         } catch (Exception e) {
-            throw new RuntimeException("Error al conectar con ms-camiones: " + e.getMessage());
+            throw new RuntimeException("Error al buscar camiones disponibles en ms-camiones: " + e.getMessage());
         }
-
-        if (camion == null) {
+        
+        // 2. Buscar la patente especificada en los camiones aptos
+        CamionDTO camionSolicitado = camionesApts.stream()
+                .filter(c -> c.getPatente().equalsIgnoreCase(patente))
+                .findFirst()
+                .orElse(null);
+        
+        // Si no está en los aptos, obtener directamente por patente (fallback)
+        if (camionSolicitado == null) {
+            String urlDirecta = String.format("http://ms-camiones:8083/camiones/%s", patente);
+            try {
+                camionSolicitado = webClientBuilder.build().get()
+                        .uri(urlDirecta)
+                        .retrieve()
+                        .bodyToMono(CamionDTO.class)
+                        .block(Duration.ofSeconds(5)); // Timeout de 5s
+            } catch (Exception e) {
+                throw new RuntimeException("Error al obtener camión " + patente + " de ms-camiones: " + e.getMessage());
+            }
+        }
+        
+        // 3. Validaciones finales
+        if (camionSolicitado == null) {
             throw new EntityNotFoundException("Camión no encontrado: " + patente);
         }
-        if (camion.getDisponibilidad() == null || !camion.getDisponibilidad()) {
-            throw new IllegalStateException("El camión " + patente + " no está disponible.");
+        
+        if (camionSolicitado.getDisponibilidad() == null || !camionSolicitado.getDisponibilidad()) {
+            throw new IllegalStateException("El camión " + patente + " no está disponible para asignación.");
         }
-        if (camion.getCapacidadPeso() == null || camion.getCapacidadVolumen() == null ||
-            camion.getCapacidadPeso() < peso || camion.getCapacidadVolumen() < volumen) {
-            throw new IllegalStateException("El camión " + patente + " no soporta el peso/volumen del contenedor.");
+        
+        if (camionSolicitado.getCapacidadPeso() == null || camionSolicitado.getCapacidadVolumen() == null) {
+            throw new IllegalStateException("El camión " + patente + " no tiene datos de capacidad definidos.");
         }
-
-        return camion;
+        
+        if (camionSolicitado.getCapacidadPeso() < peso) {
+            throw new IllegalStateException("El camión " + patente + " no soporta el peso (" + peso + "kg) del contenedor. Capacidad máxima: " + camionSolicitado.getCapacidadPeso() + "kg");
+        }
+        
+        if (camionSolicitado.getCapacidadVolumen() < volumen) {
+            throw new IllegalStateException("El camión " + patente + " no soporta el volumen (" + volumen + "m³) del contenedor. Capacidad máxima: " + camionSolicitado.getCapacidadVolumen() + "m³");
+        }
+        
+        return camionSolicitado;
     }
 
     /**
      * Llama al ms-camiones para obtener los datos de un camión (sin validar).
+     * Usa el endpoint /camiones/detalle/{patente} que devuelve CamionDTO con todos los datos.
      */
     private CamionDTO buscarCamion(String patente) {
-        String url = String.format("http://ms-camiones:8083/camiones/%s", patente);
+        String url = String.format("http://ms-camiones:8083/camiones/detalle/%s", patente);
         try {
             CamionDTO camion = webClientBuilder.build().get()
                     .uri(url)

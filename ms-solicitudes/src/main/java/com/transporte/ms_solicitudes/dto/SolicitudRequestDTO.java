@@ -1,7 +1,6 @@
 package com.transporte.ms_solicitudes.dto;
 
 import lombok.Data;
-import java.math.BigDecimal;
 
 @Data
 public class SolicitudRequestDTO {
@@ -9,12 +8,12 @@ public class SolicitudRequestDTO {
     private String clienteDni;
 
     // Datos del Contenedor (REQ 1.1)
-    private BigDecimal pesoContenedor;
-    private BigDecimal volumenContenedor;
+    private Double pesoContenedor;
+    private Double volumenContenedor;
     
     // Coordenadas (REQ 32, 33)
-    private BigDecimal origenLatitud;
-    private BigDecimal origenLongitud;
-    private BigDecimal destinoLatitud;
-    private BigDecimal destinoLongitud;
+    private Double origenLatitud;
+    private Double origenLongitud;
+    private Double destinoLatitud;
+    private Double destinoLongitud;
 }

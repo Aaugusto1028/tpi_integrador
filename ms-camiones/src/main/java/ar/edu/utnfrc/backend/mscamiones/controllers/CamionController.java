@@ -61,13 +61,12 @@ public class CamionController {
         return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
     }
 
-    // --- Endpoint: GET /camiones/buscar-apto (Roles: Operador) ---
+    // --- Endpoint: GET /camiones/buscar-apto (Public - for inter-service communication) ---
     @GetMapping("/buscar-apto")
-    @PreAuthorize("hasAuthority('OPERADOR')")
-    @Operation(summary = "Buscar camiones aptos", description = "Busca camiones que cumplan con los requisitos de peso y volumen especificados")
+    @PreAuthorize("permitAll()")
+    @Operation(summary = "Buscar camiones aptos", description = "Busca camiones que cumplan con los requisitos de peso y volumen especificados (acceso público para comunicación entre servicios)")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Listado de camiones aptos obtenido exitosamente"),
-        @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
         @ApiResponse(responseCode = "400", description = "Parámetros de búsqueda inválidos")
     })
     public ResponseEntity<List<Camion>> getCamionesAptos(

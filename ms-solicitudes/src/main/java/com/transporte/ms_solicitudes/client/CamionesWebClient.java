@@ -5,7 +5,6 @@ import com.transporte.ms_solicitudes.dto.PromediosDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import java.math.BigDecimal;
 
 @Component
 public class CamionesWebClient {
@@ -15,10 +14,10 @@ public class CamionesWebClient {
 
     private static final String MS_CAMIONES_URL = "http://ms-camiones:8083/camiones";
 
-    public PromediosDTO obtenerPromedios(BigDecimal peso, BigDecimal volumen) {
+    public PromediosDTO obtenerPromedios(Double peso, Double volumen) {
         return webClient.get()
                 .uri(MS_CAMIONES_URL + "/promedios?peso={peso}&volumen={volumen}",
-                        peso.doubleValue(), volumen.doubleValue())
+                        peso, volumen)
                 .retrieve()
                 .bodyToMono(PromediosDTO.class)
                 .block();

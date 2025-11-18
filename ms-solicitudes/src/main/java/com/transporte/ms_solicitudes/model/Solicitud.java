@@ -30,16 +30,16 @@ public class Solicitud {
     private String estado;
 
     @Column(name = "origen_latitud", precision = 10, scale = 6)
-    private java.math.BigDecimal origenLatitud;
+    private BigDecimal origenLatitud;
 
     @Column(name = "origen_longitud", precision = 10, scale = 6)
-    private java.math.BigDecimal origenLongitud;
+    private BigDecimal origenLongitud;
 
     @Column(name = "destino_latitud", precision = 10, scale = 6)
-    private java.math.BigDecimal destinoLatitud;
+    private BigDecimal destinoLatitud;
 
     @Column(name = "destino_longitud", precision = 10, scale = 6)
-    private java.math.BigDecimal destinoLongitud;
+    private BigDecimal destinoLongitud;
 
     // --- RELACIONES OBLIGATORIAS (LADO DUEÑO DE LA FK) ---
 
