@@ -128,6 +128,7 @@ public class RutaController {
      * Obtener detalle de una ruta por id (versión pública, sin autenticación)
      */
     @GetMapping("/publico/{id}")
+    @PreAuthorize("permitAll()")
     @Operation(summary = "Obtener ruta pública", description = "Obtiene los detalles de una ruta sin requerir autenticación")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Detalles de la ruta obtenidos exitosamente", 
@@ -187,6 +188,7 @@ public class RutaController {
      * Endpoint público para que ms-solicitudes obtenga el costo real desglosado de un traslado.
      */
     @GetMapping("/solicitud/{idSolicitud}/costo-real")
+    @PreAuthorize("permitAll()")
     @Operation(summary = "Obtener costo real de un traslado", description = "Obtiene el costo desglosado y detallado de un traslado asociado a una solicitud")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Costo obtenido exitosamente", 
@@ -206,6 +208,7 @@ public class RutaController {
      * Endpoint público para que ms-solicitudes obtenga la tarifa vigente.
      */
     @GetMapping("/tarifas")
+    @PreAuthorize("permitAll()")
     @Operation(summary = "Obtener tarifas vigentes", description = "Obtiene las tarifas de transporte vigentes")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Tarifas obtenidas exitosamente", 
@@ -225,6 +228,7 @@ public class RutaController {
      * Endpoint público para que ms-camiones u otros servicios obtengan los tramos
      */
     @GetMapping("/patente/{patenteCamion}/tramos")
+    @PreAuthorize("permitAll()")
     @Operation(summary = "Obtener tramos por patente", description = "Obtiene todos los tramos asignados a un camión identificado por su patente")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Tramos obtenidos exitosamente"),
@@ -248,6 +252,7 @@ public class RutaController {
      * Endpoint público para que ms-solicitudes obtenga el costo real desglosado de un traslado.
      */
     @GetMapping("/ruta/{idRuta}/costo-real")
+    @PreAuthorize("permitAll()")
     @Operation(summary = "Obtener costo real de una ruta", description = "Obtiene el costo desglosado y detallado de una ruta específica")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Costo obtenido exitosamente", 
@@ -270,6 +275,7 @@ public class RutaController {
      * Este era el endpoint que faltaba y causaba el 503.
      */
     @PostMapping("/distancia")
+    @PreAuthorize("permitAll()")
     public Mono<DistanciaDTO> obtenerDistancia(@RequestBody CoordenadasRequest request) {
         String origen = request.getOrigenLatitud() + "," + request.getOrigenLongitud();
         String destino = request.getDestinoLatitud() + "," + request.getDestinoLongitud();

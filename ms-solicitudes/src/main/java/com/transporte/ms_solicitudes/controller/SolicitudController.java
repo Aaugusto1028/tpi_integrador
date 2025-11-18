@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+// Importa todo de web.bind.annotation, incluyendo RequestBody de Spring
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*; 
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,7 +20,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
+// ❌ BORRA ESTA LÍNEA: import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
 import java.util.List;
 
@@ -39,9 +41,44 @@ public class SolicitudController {
         @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol CLIENTE)"),
         @ApiResponse(responseCode = "400", description = "Datos inválidos en la solicitud")
     })
-    public ResponseEntity<SolicitudResponseDTO> crearSolicitud(@RequestBody SolicitudRequestDTO solicitudRequest) {
-        SolicitudResponseDTO solicitud = solicitudService.crearSolicitud(solicitudRequest);
-        return ResponseEntity.ok(solicitud);
+    public ResponseEntity<?> crearSolicitud(@RequestBody SolicitudRequestDTO solicitudRequest) {
+        try {
+            // Validaciones específicas
+            if (solicitudRequest.getClienteDni() == null || solicitudRequest.getClienteDni().isBlank()) {
+                return ResponseEntity.badRequest().body("DNI del cliente es obligatorio");
+            }
+            if (solicitudRequest.getPesoContenedor() == null) {
+                return ResponseEntity.badRequest().body("Peso del contenedor es obligatorio");
+            }
+            if (solicitudRequest.getPesoContenedor() <= 0) {
+                return ResponseEntity.badRequest().body("Peso del contenedor debe ser mayor a 0");
+            }
+            if (solicitudRequest.getVolumenContenedor() == null) {
+                return ResponseEntity.badRequest().body("Volumen del contenedor es obligatorio");
+            }
+            if (solicitudRequest.getVolumenContenedor() <= 0) {
+                return ResponseEntity.badRequest().body("Volumen del contenedor debe ser mayor a 0");
+            }
+            if (solicitudRequest.getOrigenLatitud() == null) {
+                return ResponseEntity.badRequest().body("Latitud de origen es obligatoria");
+            }
+            if (solicitudRequest.getOrigenLongitud() == null) {
+                return ResponseEntity.badRequest().body("Longitud de origen es obligatoria");
+            }
+            if (solicitudRequest.getDestinoLatitud() == null) {
+                return ResponseEntity.badRequest().body("Latitud de destino es obligatoria");
+            }
+            if (solicitudRequest.getDestinoLongitud() == null) {
+                return ResponseEntity.badRequest().body("Longitud de destino es obligatoria");
+            }
+            
+            SolicitudResponseDTO solicitud = solicitudService.crearSolicitud(solicitudRequest);
+            return ResponseEntity.ok(solicitud);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al crear solicitud: " + e.getMessage());
+        }
     }
 
     @GetMapping
@@ -65,8 +102,17 @@ public class SolicitudController {
         @ApiResponse(responseCode = "403", description = "No autorizado"),
         @ApiResponse(responseCode = "404", description = "Solicitud no encontrada")
     })
-    public ResponseEntity<SolicitudResponseDTO> obtenerSolicitud(@PathVariable Long id) {
-        return ResponseEntity.ok(solicitudService.obtenerSolicitud(id));
+    public ResponseEntity<?> obtenerSolicitud(@PathVariable Long id) {
+        try {
+            if (id == null || id <= 0) {
+                return ResponseEntity.badRequest().body("ID de solicitud inválido");
+            }
+            return ResponseEntity.ok(solicitudService.obtenerSolicitud(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Solicitud no encontrada: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener solicitud: " + e.getMessage());
+        }
     }
 
     @GetMapping("/{id}/estado")
@@ -78,8 +124,17 @@ public class SolicitudController {
         @ApiResponse(responseCode = "403", description = "No autorizado"),
         @ApiResponse(responseCode = "404", description = "Solicitud no encontrada")
     })
-    public ResponseEntity<SeguimientoDTO> obtenerEstado(@PathVariable Long id) {
-        return ResponseEntity.ok(solicitudService.obtenerEstado(id));
+    public ResponseEntity<?> obtenerEstado(@PathVariable Long id) {
+        try {
+            if (id == null || id <= 0) {
+                return ResponseEntity.badRequest().body("ID de solicitud inválido");
+            }
+            return ResponseEntity.ok(solicitudService.obtenerEstado(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Solicitud no encontrada: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener estado: " + e.getMessage());
+        }
     }
 
     /**
@@ -96,11 +151,35 @@ public class SolicitudController {
         @ApiResponse(responseCode = "404", description = "Solicitud no encontrada"),
         @ApiResponse(responseCode = "400", description = "No se puede finalizar una solicitud en este estado")
     })
-    public ResponseEntity<SolicitudResponseDTO> finalizarSolicitud(
+    public ResponseEntity<?> finalizarSolicitud(
             @PathVariable Long id,
             @RequestBody FinalizarSolicitudDTO dto) {
-        SolicitudResponseDTO solicitud = solicitudService.finalizarSolicitud(id, dto);
-        return ResponseEntity.ok(solicitud);
+        try {
+            if (id == null || id <= 0) {
+                return ResponseEntity.badRequest().body("ID de solicitud inválido");
+            }
+            if (dto == null || dto.getCostoFinal() == null) {
+                return ResponseEntity.badRequest().body("Costo final es obligatorio");
+            }
+            if (dto.getCostoFinal().signum() < 0) {
+                return ResponseEntity.badRequest().body("Costo final no puede ser negativo");
+            }
+            if (dto.getTiempoReal() == null) {
+                return ResponseEntity.badRequest().body("Tiempo real es obligatorio");
+            }
+            if (dto.getTiempoReal().signum() < 0) {
+                return ResponseEntity.badRequest().body("Tiempo real no puede ser negativo");
+            }
+            
+            SolicitudResponseDTO solicitud = solicitudService.finalizarSolicitud(id, dto);
+            return ResponseEntity.ok(solicitud);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Solicitud no encontrada: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al finalizar solicitud: " + e.getMessage());
+        }
     }
 
     /**
@@ -118,11 +197,23 @@ public class SolicitudController {
         @ApiResponse(responseCode = "403", description = "No autorizado"),
         @ApiResponse(responseCode = "404", description = "Contenedor no encontrado")
     })
-    public ResponseEntity<Void> actualizarEstadoContenedor(
+    public ResponseEntity<?> actualizarEstadoContenedor(
             @PathVariable Long idContenedor,
             @RequestBody EstadoDTO estadoDTO) {
-
-        solicitudService.actualizarEstadoContenedor(idContenedor, estadoDTO.getEstado());
-        return ResponseEntity.ok().build();
+        try {
+            if (idContenedor == null || idContenedor <= 0) {
+                return ResponseEntity.badRequest().body("ID de contenedor inválido");
+            }
+            if (estadoDTO == null || estadoDTO.getEstado() == null || estadoDTO.getEstado().isBlank()) {
+                return ResponseEntity.badRequest().body("Estado del contenedor es obligatorio");
+            }
+            
+            solicitudService.actualizarEstadoContenedor(idContenedor, estadoDTO.getEstado());
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Contenedor no encontrado: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al actualizar estado: " + e.getMessage());
+        }
     }
 }

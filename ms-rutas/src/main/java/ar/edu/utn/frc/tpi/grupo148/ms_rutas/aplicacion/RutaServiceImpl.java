@@ -268,6 +268,9 @@ public class RutaServiceImpl implements RutaService {
     /**
      * Calcula el costo real de un tramo finalizado.
      */
+    /**
+     * Calcula el costo real de un tramo finalizado.
+     */
     private BigDecimal calcularCostoRealTramo(Tramo tramo) {
         // 1. Obtener datos del camión
         CamionDTO camion = buscarCamion(tramo.getPatenteCamionAsignado());
@@ -276,17 +279,22 @@ public class RutaServiceImpl implements RutaService {
         Tarifa tarifaBase = tarifaRepository.findById(1L) // Asumimos 1L = tarifa base
                 .orElseThrow(() -> new EntityNotFoundException("Tarifa base no encontrada"));
 
-        // 3. Calcular costo por km
-        BigDecimal costoKm = camion.getCostoPorKm().multiply(BigDecimal.valueOf(tramo.getDistanciaKm()));
+        // 3. Calcular costo por km (Manejo seguro de nulos)
+        BigDecimal costoKmBase = camion.getCostoPorKm() != null ? camion.getCostoPorKm() : BigDecimal.ZERO;
+        BigDecimal costoKm = costoKmBase.multiply(BigDecimal.valueOf(tramo.getDistanciaKm()));
 
-        // 4. Calcular costo de combustible
-        double consumoTotalLitros = camion.getConsumoCombustibleKm() * tramo.getDistanciaKm();
-        BigDecimal costoCombustible = tarifaBase.getPrecioLitro().multiply(BigDecimal.valueOf(consumoTotalLitros));
+        // 4. Calcular costo de combustible (CORRECCIÓN AQUÍ)
+        Double consumo = camion.getConsumoCombustibleKm();
+        if (consumo == null) {
+            consumo = 0.0; // Valor por defecto para evitar NPE
+        }
+        
+        double consumoTotalLitros = consumo * tramo.getDistanciaKm();
+        
+        BigDecimal precioLitro = tarifaBase.getPrecioLitro() != null ? tarifaBase.getPrecioLitro() : BigDecimal.ZERO;
+        BigDecimal costoCombustible = precioLitro.multiply(BigDecimal.valueOf(consumoTotalLitros));
 
         // 5. Calcular costo de estadía (si aplica)
-        // (Esta lógica es más compleja, requiere saber cuánto tiempo estuvo en el
-        // depósito)
-        // Por ahora, lo dejamos en 0.
         BigDecimal costoEstadia = BigDecimal.ZERO;
 
         // 6. Sumar todo
