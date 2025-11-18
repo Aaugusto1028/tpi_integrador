@@ -1,6 +1,6 @@
 # Cada servicio debe tener un puerto único
 server:
-  port: 8083
+  port: 8081
 
 # Nombre del servicio
 spring:

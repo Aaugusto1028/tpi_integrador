@@ -29,20 +29,24 @@ public class GatewayConfig {
             
             .route("ms-solicitudes-api", r -> r.path("/api/solicitudes/**", "/api/clientes/**")
                 .filters(f -> f.rewritePath("/api/(?<segment>.*)", "/${segment}"))
-                .uri("lb://ms-solicitudes:8081")) 
+                // --- CAMBIO AQUÍ --- (de lb:// a http://)
+                .uri("http://ms-solicitudes:8081")) 
             
             .route("ms-rutas-api", r -> r.path("/api/rutas/**", "/api/tramos/**", "/api/depositos/**")
                 .filters(f -> f.rewritePath("/api/(?<segment>.*)", "/${segment}"))
-                .uri("lb://ms-rutas:8082")) 
+                // --- CAMBIO AQUÍ --- (de lb:// a http://)
+                .uri("http://ms-rutas:8082")) 
             
             .route("ms-camiones-api", r -> r.path("/api/camiones/**")
                 .filters(f -> f.rewritePath("/api/(?<segment>.*)", "/${segment}"))
-                .uri("lb://ms-camiones:8083")) 
+                // --- CAMBIO AQUÍ --- (de lb:// a http://)
+                .uri("http://ms-camiones:8083")) 
 
             .build();
     }
     
     // --- 2. Configuración de Seguridad (SecurityWebFilterChain) ---
+    // (Esto ya está corregido para el 401)
     @Bean
     public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http) {
         http
@@ -60,7 +64,7 @@ public class GatewayConfig {
     }
     
     // --- 3. Extractor de Roles de Keycloak para WebFlux ---
-
+    // (Esto ya está corregido para el 401)
     private static class JwtReactiveAuthenticationConverter implements Converter<Jwt, Mono<? extends org.springframework.security.authentication.AbstractAuthenticationToken>> {
         
         @Override
@@ -77,7 +81,6 @@ public class GatewayConfig {
             
             List<SimpleGrantedAuthority> authorities = new ArrayList<>();
             for (String role : roles) {
-                // CORRECCIÓN CLAVE: Convertir a mayúsculas
                 authorities.add(new SimpleGrantedAuthority(role.toUpperCase()));
             }
             

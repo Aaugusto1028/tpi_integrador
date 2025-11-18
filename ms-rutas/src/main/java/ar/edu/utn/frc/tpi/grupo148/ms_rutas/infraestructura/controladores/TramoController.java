@@ -21,7 +21,7 @@ public class TramoController {
      *
      */
     @PutMapping("/{id}/asignar-camion")
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<Tramo> asignarCamion(@PathVariable Long id, @RequestBody AsignarCamionRequest request) {
         Tramo tramo = rutaService.asignarCamionATramo(id, request);
         return ResponseEntity.ok(tramo);
@@ -33,7 +33,7 @@ public class TramoController {
      *
      */
     @PostMapping("/{id}/iniciar")
-    @PreAuthorize("hasRole('TRANSPORTISTA')")
+    @PreAuthorize("hasAuthority('TRANSPORTISTA')")
     public ResponseEntity<Tramo> iniciarTramo(@PathVariable Long id) {
         Tramo tramo = rutaService.iniciarTramo(id);
         return ResponseEntity.ok(tramo);
@@ -45,7 +45,7 @@ public class TramoController {
      *
      */
     @PostMapping("/{id}/finalizar")
-    @PreAuthorize("hasRole('TRANSPORTISTA')")
+    @PreAuthorize("hasAuthority('TRANSPORTISTA')")
     public ResponseEntity<Tramo> finalizarTramo(@PathVariable Long id) {
         Tramo tramo = rutaService.finalizarTramo(id);
         return ResponseEntity.ok(tramo);
@@ -56,7 +56,7 @@ public class TramoController {
      * Parámetros: patenteCamion (requerido), estadoId (opcional), page, size
      */
     @GetMapping
-    @PreAuthorize("hasRole('TRANSPORTISTA')")
+    @PreAuthorize("hasAuthority('TRANSPORTISTA')")
     public ResponseEntity<org.springframework.data.domain.Page<Tramo>> listarTramosPorPatente(
             @RequestParam(name = "patenteCamion") String patente,
             @RequestParam(name = "estadoId", required = false) Long estadoId,

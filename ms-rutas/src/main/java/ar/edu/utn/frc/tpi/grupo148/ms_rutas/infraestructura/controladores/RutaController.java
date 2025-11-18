@@ -17,6 +17,14 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// --- IMPORTACIONES AÑADIDAS ---
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.GoogleMapsClient;
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.CoordenadasRequest;
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.DistanciaDTO;
+import java.math.BigDecimal;
+import reactor.core.publisher.Mono;
+// --- FIN DE IMPORTACIONES AÑADIDAS ---
+
 @RestController
 @RequestMapping("/rutas")
 public class RutaController {
@@ -30,14 +38,19 @@ public class RutaController {
     @Autowired
     private org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder;
 
+    // --- CAMPO AÑADIDO ---
+    // Inyecta el GoogleMapsClient que ya existe en tu proyecto
+    @Autowired
+    private GoogleMapsClient googleMapsClient;
+    // --- FIN DE CAMPO AÑADIDO ---
+
+
     /**
      * Endpoint para crear una nueva ruta tentativa con todos sus tramos.
-     * Calcula distancias y costos estimados.
-     * Solo accesible por el rol 'OPERADOR'.
-     *
+     * ... (resto de los comentarios)
      */
     @PostMapping
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<Ruta> crearRuta(@RequestBody CrearRutaRequest request) {
         Ruta nuevaRuta = rutaService.crearRutaTentativa(request);
         // Devuelve 201 Created
@@ -46,10 +59,10 @@ public class RutaController {
 
     /**
      * Endpoint para listar rutas (paginado).
-     * Solo accesible por el rol 'OPERADOR'.
+     * ... (resto de los comentarios)
      */
     @GetMapping
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<Page<Ruta>> listarRutas(
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
@@ -60,10 +73,10 @@ public class RutaController {
 
     /**
      * Endpoint para obtener rutas asociadas a una solicitud.
-     * Solo accesible por el rol 'OPERADOR'.
+     * ... (resto de los comentarios)
      */
     @GetMapping("/solicitud/{idSolicitud}")
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<java.util.List<Ruta>> obtenerRutasPorSolicitud(@PathVariable Long idSolicitud) {
         java.util.List<Ruta> rutas = rutaRepository.findByIdSolicitud(idSolicitud);
         if (rutas == null || rutas.isEmpty()) {
@@ -76,7 +89,7 @@ public class RutaController {
      * Obtener detalle de una ruta por id
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<Ruta> obtenerRutaPorId(@PathVariable Long id) {
         return rutaRepository.findById(id)
                 .map(ResponseEntity::ok)
@@ -87,7 +100,7 @@ public class RutaController {
      * Marcar una ruta como asignada (OPERADOR).
      */
     @PostMapping("/{id}/asignar")
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<Ruta> asignarRuta(@PathVariable Long id) {
         Ruta rutaAsignada = rutaService.asignarRuta(id);
         return ResponseEntity.ok(rutaAsignada);
@@ -97,7 +110,7 @@ public class RutaController {
      * Proxy simple para listar contenedores pendientes desde ms-solicitudes.
      */
     @GetMapping("/contenedores-pendientes")
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<Object> contenedoresPendientes() {
         try {
             String url = "http://ms-solicitudes:8081/contenedores/pendientes";
@@ -115,8 +128,7 @@ public class RutaController {
 
     /**
      * Endpoint público para que ms-solicitudes obtenga el costo real desglosado de un traslado.
-     * Busca la ruta por idSolicitud.
-     * GET /rutas/solicitud/{idSolicitud}/costo-real
+     * ... (resto de los comentarios)
      */
     @GetMapping("/solicitud/{idSolicitud}/costo-real")
     public ResponseEntity<CostoTrasladoDTO> obtenerCostoTrasladoRealPorSolicitud(@PathVariable Long idSolicitud) {
@@ -130,7 +142,7 @@ public class RutaController {
 
     /**
      * Endpoint público para que ms-solicitudes obtenga la tarifa vigente.
-     * Devuelve un `TarifaDTO` (precio por litro y costo de estadía diario).
+     * ... (resto de los comentarios)
      */
     @GetMapping("/tarifas")
     public ResponseEntity<TarifaDTO> obtenerTarifasPublicas() {
@@ -144,8 +156,7 @@ public class RutaController {
 
     /**
      * Endpoint público para que ms-camiones u otros servicios obtengan los tramos
-     * asignados a una patente específica.
-     * GET /rutas/patente/{patenteCamion}/tramos
+     * ... (resto de los comentarios)
      */
     @GetMapping("/patente/{patenteCamion}/tramos")
     public ResponseEntity<List<TramoDTO>> obtenerTramosAsignadosPorPatente(
@@ -163,8 +174,7 @@ public class RutaController {
 
     /**
      * Endpoint público para que ms-solicitudes obtenga el costo real desglosado de un traslado.
-     * Usado al finalizar una solicitud por ID de ruta.
-     * GET /rutas/ruta/{idRuta}/costo-real
+     * ... (resto de los comentarios)
      */
     @GetMapping("/ruta/{idRuta}/costo-real")
     public ResponseEntity<CostoTrasladoDTO> obtenerCostoTrasladoReal(@PathVariable Long idRuta) {
@@ -175,4 +185,27 @@ public class RutaController {
             return ResponseEntity.status(502).body(null);
         }
     }
+
+
+    // --- ENDPOINT AÑADIDO ---
+    /**
+     * Endpoint para que ms-solicitudes calcule la distancia de una ruta.
+     * Este era el endpoint que faltaba y causaba el 503.
+     */
+    @PostMapping("/distancia")
+    public Mono<DistanciaDTO> obtenerDistancia(@RequestBody CoordenadasRequest request) {
+        String origen = request.getOrigenLatitud() + "," + request.getOrigenLongitud();
+        String destino = request.getDestinoLatitud() + "," + request.getDestinoLongitud();
+
+        // Llama al cliente de Google Maps que ya tenías
+        return googleMapsClient.getDistanciaEnMetros(origen, destino)
+                .map(distanciaEnMetros -> {
+                    // El DTO espera BigDecimal, y Google solo nos da distancia (no duración)
+                    return new DistanciaDTO(
+                            new BigDecimal(distanciaEnMetros),
+                            BigDecimal.ZERO // Devolvemos 0 para la duración por ahora
+                    );
+                });
+    }
+    // --- FIN DE ENDPOINT AÑADIDO ---
 }

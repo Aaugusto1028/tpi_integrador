@@ -23,7 +23,7 @@ public class TarifaController {
      *
      */
     @GetMapping
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<List<Tarifa>> obtenerTarifas() {
         return ResponseEntity.ok(tarifaRepository.findAll());
     }
@@ -34,7 +34,7 @@ public class TarifaController {
      *
      */
     @PostMapping
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<Tarifa> crearTarifa(@RequestBody Tarifa tarifa) {
         return ResponseEntity.status(201).body(tarifaRepository.save(tarifa));
     }
@@ -45,7 +45,7 @@ public class TarifaController {
      *
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<Tarifa> actualizarTarifa(@PathVariable Long id, @RequestBody Tarifa tarifaActualizada) {
         Tarifa tarifa = tarifaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Tarifa no encontrada: " + id));

@@ -7,6 +7,7 @@ import com.transporte.ms_solicitudes.dto.EstadoDTO;
 import com.transporte.ms_solicitudes.dto.FinalizarSolicitudDTO; // <-- IMPORTADO
 import com.transporte.ms_solicitudes.service.SolicitudService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -21,15 +22,15 @@ public class SolicitudController {
     private SolicitudService solicitudService;
 
     @PostMapping
-    @PreAuthorize("hasRole('CLIENTE')")
+    @PreAuthorize("hasAuthority('CLIENTE')")
     public ResponseEntity<SolicitudResponseDTO> crearSolicitud(@RequestBody SolicitudRequestDTO solicitudRequest) {
         SolicitudResponseDTO solicitud = solicitudService.crearSolicitud(solicitudRequest);
         return ResponseEntity.ok(solicitud);
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('OPERADOR')")
-    public ResponseEntity<List<SolicitudResponseDTO>> listarSolicitudes(
+    @PreAuthorize("hasAuthority('OPERADOR')")
+    public ResponseEntity<List<SolicitudResponseDTO>> obtenerSolicitudes(
             // CAMBIO 1: Aceptamos un parámetro de filtro opcional
             @RequestParam(required = false) String estado) {
         return ResponseEntity.ok(solicitudService.listarSolicitudes(estado)); // CAMBIO 2: Pasamos el filtro
@@ -52,7 +53,7 @@ public class SolicitudController {
      * Es llamado por un Operador cuando el transporte ha concluido.
      */
     @PutMapping("/{id}/finalizar")
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<SolicitudResponseDTO> finalizarSolicitud(
             @PathVariable Long id,
             // CAMBIO 3: Aceptamos los datos reales en el Body

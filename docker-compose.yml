@@ -55,7 +55,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/tpi-backend
       # 2. Para BUSCAR las claves de validación (usa la red interna de Docker)
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
-      # El Gateway necesita poder acceder a los microservicios
+      # (Eureka sigue deshabilitado)
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
 
   # --- 5. Tus Microservicios ---

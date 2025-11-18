@@ -24,8 +24,8 @@ public class DepositoController {
      *
      */
     @GetMapping
-    @PreAuthorize("hasRole('OPERADOR')")
-    public ResponseEntity<List<Deposito>> obtenerDepositos() {
+    @PreAuthorize("hasAuthority('OPERADOR')")
+    public ResponseEntity<List<Deposito>> obtenerTodos() {
         return ResponseEntity.ok(depositoRepository.findAll());
     }
 
@@ -35,8 +35,8 @@ public class DepositoController {
      *
      */
     @PostMapping
-    @PreAuthorize("hasRole('OPERADOR')")
-    public ResponseEntity<Deposito> crearDeposito(@RequestBody Deposito deposito) {
+    @PreAuthorize("hasAuthority('OPERADOR')")
+    public ResponseEntity<Deposito> crear(@RequestBody Deposito deposito) {
         return ResponseEntity.status(201).body(depositoRepository.save(deposito));
     }
 
@@ -46,7 +46,7 @@ public class DepositoController {
      *
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('OPERADOR')")
+    @PreAuthorize("hasAuthority('OPERADOR')")
     public ResponseEntity<Deposito> actualizarDeposito(@PathVariable Long id,
             @RequestBody Deposito depositoActualizado) {
         Deposito deposito = depositoRepository.findById(id)
