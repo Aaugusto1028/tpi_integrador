@@ -26,6 +26,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/solicitudes/contenedores/**").permitAll() // Permite que ms-rutas actualice estado
+                .requestMatchers("/solicitudes/**").permitAll() 
+                
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
@@ -36,7 +38,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ¡CORREGIDO! Este Bean faltaba por completo
+  
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();

@@ -71,9 +71,7 @@ public class RutaController {
             if (request == null || request.getIdSolicitud() == null || request.getIdSolicitud() <= 0) {
                 return ResponseEntity.badRequest().body("ID de solicitud es obligatorio y debe ser mayor a 0");
             }
-            if (request.getTramos() == null || request.getTramos().isEmpty()) {
-                return ResponseEntity.badRequest().body("Debe proporcionar al menos un tramo");
-            }
+          
             
             for (int i = 0; i < request.getTramos().size(); i++) {
                 CrearRutaRequest.TramoDTO tramo = request.getTramos().get(i);

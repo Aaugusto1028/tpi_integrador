@@ -119,7 +119,7 @@ private CostoTiempoDTO calcularCostoTiempoEstimado(
             DistanciaDTO distancia = rutasWebClient.obtenerDistancia(lat1, lon1, lat2, lon2);
             BigDecimal distanciaDirectaKm = distancia.getDistanciaMetros().divide(new BigDecimal(1000));
             
-            // MEJORA 1: Factor de Desvío (Ruta Real vs Directa)
+           
             // La ruta real pasa por depósitos, nunca es línea recta. Agregamos un 25% de margen.
             BigDecimal factorDesvio = new BigDecimal("1.25");
             BigDecimal distanciaEstimadaTotal = distanciaDirectaKm.multiply(factorDesvio);
@@ -138,17 +138,15 @@ private CostoTiempoDTO calcularCostoTiempoEstimado(
             BigDecimal costoKmSeguro = promedios.getCostoPromedioPorKm().multiply(margenSeguridad);
             BigDecimal consumoKmSeguro = promedios.getConsumoPromedioPorKm().multiply(margenSeguridad);
 
-            // Cálculo de costos de transporte
+                // Cálculo de costos de transpo¿rte
             BigDecimal costoTramo = distanciaEstimadaTotal.multiply(costoKmSeguro);
             BigDecimal costoCombustible = distanciaEstimadaTotal
                     .multiply(consumoKmSeguro)
                     .multiply(tarifas.getPrecioLitro());
 
-            // MEJORA 3: Estimación de Estadías (Tramos)
-            // Si el viaje es largo, habrá paradas intermedias (tramos). 
-            // Estimamos 1 tramo inicial + 1 parada extra cada 600km.
-            // Ejemplo: 100km -> 1 tramo. 700km -> 2 tramos.
-            int tramosEstimados = 1 + distanciaEstimadaTotal.divide(new BigDecimal(600), 0, RoundingMode.UP).intValue();
+
+            int tramosEstimados = (distanciaEstimadaTotal.compareTo(new BigDecimal(600)) > 0) ? distanciaEstimadaTotal.divide(new BigDecimal(600), 0, RoundingMode.UP).intValue() : 1;
+                    
             
             BigDecimal costoEstadiaDiario = tarifas.getCostoEstadiaDiario() != null 
                     ? tarifas.getCostoEstadiaDiario() 
@@ -164,7 +162,7 @@ private CostoTiempoDTO calcularCostoTiempoEstimado(
 
             // Calcular tiempo (distancia aumentada / 70 km/h promedio + 4 horas por tramo de gestión)
             BigDecimal tiempoViaje = distanciaEstimadaTotal.divide(new BigDecimal(70), 2, RoundingMode.HALF_UP);
-            BigDecimal tiempoGestion = new BigDecimal(tramosEstimados * 4); // 4 horas por parada
+            BigDecimal tiempoGestion = new BigDecimal((tramosEstimados - 1) * 4); // 4 horas por parada
             BigDecimal tiempoTotalHoras = tiempoViaje.add(tiempoGestion);
 
             logger.info("Estimación Final: Costo=${} (Tramos est: {}), Tiempo={}hs", 
@@ -267,9 +265,23 @@ private CostoTiempoDTO calcularCostoTiempoEstimado(
     public SolicitudResponseDTO obtenerSolicitud(Long id) {
         Solicitud solicitud = solicitudRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Solicitud no encontrada"));
-        return mapToResponseDTO(solicitud);
+        return mapToResponseDTO(solicitud); 
     }
 
+
+    public CoordenadasSolicitudDTO obtenerCordenadasSolicitud(Long id) {
+        Solicitud solicitud = solicitudRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Solicitud no encontrada"));
+
+        CoordenadasSolicitudDTO dto = new CoordenadasSolicitudDTO();
+        dto.setSolicitudId(solicitud.getId());
+        dto.setOrigenLatitud(solicitud.getOrigenLatitud());
+        dto.setOrigenLongitud(solicitud.getOrigenLongitud());
+        dto.setDestinoLatitud(solicitud.getDestinoLatitud());
+        dto.setDestinoLongitud(solicitud.getDestinoLongitud());
+
+        return dto;
+    }
     /**
      * Obtiene el seguimiento de una solicitud.
      * Utiliza el historial del contenedor (EstadoContenedor) como fuente principal de verdad.

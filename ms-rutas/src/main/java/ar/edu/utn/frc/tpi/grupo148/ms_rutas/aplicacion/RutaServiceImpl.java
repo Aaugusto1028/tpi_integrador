@@ -74,25 +74,57 @@ public class RutaServiceImpl implements RutaService {
 
     @Override
     @Transactional
-    public Ruta crearRutaTentativa(CrearRutaRequest request) {
-        Ruta ruta = new Ruta();
-        ruta.setIdSolicitud(request.getIdSolicitud());
-        ruta.setCantidadTramos(request.getTramos().size());
-        Ruta rutaGuardada = rutaRepository.save(ruta);
+public Ruta crearRutaTentativa(CrearRutaRequest request) {
+    Ruta ruta = new Ruta();
+    ruta.setIdSolicitud(request.getIdSolicitud());
+    
+    // --- LÓGICA DE AUTOMATIZACIÓN ---
+    List<CrearRutaRequest.TramoDTO> tramosDTO = request.getTramos();
 
-        EstadoTramo estadoEstimado = buscarEstadoTramo(EstadosTramo.ESTIMADO);
-        Tarifa tarifaBase = tarifaRepository.findById(1L) // Asumimos 1L = tarifa base
-                .orElseThrow(() -> new EntityNotFoundException("Tarifa base no encontrada"));
-
-        List<Tramo> tramosCreados = new ArrayList<>();
-        for (CrearRutaRequest.TramoDTO tramoDto : request.getTramos()) {
-            // Extraemos la lógica de creación a un método privado
-            tramosCreados.add(crearTramo(tramoDto, rutaGuardada, estadoEstimado, tarifaBase));
-        }
-
-        rutaGuardada.setTramos(tramosCreados);
-        return rutaGuardada;
+    // Si no mandan tramos manuales, los calculamos nosotros
+    if (tramosDTO == null || tramosDTO.isEmpty()) {
+        tramosDTO = new ArrayList<>();
+        
+        // 1. Buscar datos de la solicitud (Origen y Destino del cliente)
+        SolicitudExternaDTO solicitudData = obtenerDatosSolicitud(request.getIdSolicitud());
+        
+        // 2. Encontrar depósito más cercano al origen del cliente
+        Deposito origen = encontrarDepositoMasCercano(solicitudData.getOrigenLatitud(), solicitudData.getOrigenLongitud());
+        
+        // 3. Encontrar depósito más cercano al destino del cliente
+        Deposito destino = encontrarDepositoMasCercano(solicitudData.getDestinoLatitud(), solicitudData.getDestinoLongitud());
+        
+        // 4. Verificar si son el mismo (viaje local) o distintos
+        // Si son distintos, creamos un tramo entre ellos.
+        // Si es el mismo depósito, igual creamos un tramo "simbólico" o lanzamos error según tu regla de negocio.
+        // Asumiremos ruta directa entre depósitos:
+        
+        CrearRutaRequest.TramoDTO tramoAuto = new CrearRutaRequest.TramoDTO();
+        tramoAuto.setIdDepositoOrigen(origen.getId());
+        tramoAuto.setIdDepositoDestino(destino.getId());
+        tramoAuto.setIdTipoTramo(1L); // 1L = TERRESTRE por defecto
+        
+        tramosDTO.add(tramoAuto);
+        
+        logger.info("Ruta automática generada: Depósito {} -> Depósito {}", origen.getNombre(), destino.getNombre());
     }
+    // --------------------------------
+
+    ruta.setCantidadTramos(tramosDTO.size());
+    Ruta rutaGuardada = rutaRepository.save(ruta);
+
+    EstadoTramo estadoEstimado = buscarEstadoTramo(EstadosTramo.ESTIMADO);
+    Tarifa tarifaBase = tarifaRepository.findById(1L) 
+            .orElseThrow(() -> new EntityNotFoundException("Tarifa base no encontrada"));
+
+    List<Tramo> tramosCreados = new ArrayList<>();
+    for (CrearRutaRequest.TramoDTO tramoDto : tramosDTO) {
+        tramosCreados.add(crearTramo(tramoDto, rutaGuardada, estadoEstimado, tarifaBase));
+    }
+
+    rutaGuardada.setTramos(tramosCreados);
+    return rutaGuardada;
+}
 
     @Override
     @Transactional
@@ -775,4 +807,82 @@ public class RutaServiceImpl implements RutaService {
         
         return obtenerRutaConDetalles(idRuta);
     }
+
+
+
+    // Primero, necesitas un DTO interno para mapear la respuesta de ms-solicitudes
+@Data
+private static class SolicitudExternaDTO {
+    private Long id;
+    private BigDecimal origenLatitud;
+    private BigDecimal origenLongitud;
+    private BigDecimal destinoLatitud;
+    private BigDecimal destinoLongitud;
 }
+
+// Método privado para consultar ms-solicitudes
+private SolicitudExternaDTO obtenerDatosSolicitud(Long idSolicitud) {
+    try {
+        // Asumiendo que ms-solicitudes corre en el puerto 8081 o está en el gateway
+        // Usa el nombre del servicio 'ms-solicitudes' si estás dentro de la red de Docker
+        
+        String url = "http://ms-solicitudes:8081/solicitudes/" + idSolicitud + "/coordenadas";
+        
+        logger.info("Intentando obtener datos de solicitud {} desde: {}", idSolicitud, url);
+        
+        SolicitudExternaDTO solicitud = webClientBuilder.build()
+                .get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(SolicitudExternaDTO.class)
+                .timeout(java.time.Duration.ofSeconds(5))
+                .block();
+        
+        if (solicitud == null) {
+            throw new RuntimeException("Solicitud nula recibida de ms-solicitudes");
+        }
+        
+        logger.info("Solicitud {} obtenida exitosamente", idSolicitud);
+        return solicitud;
+    } catch (Exception e) {
+        logger.error("Error al obtener datos de solicitud {}: {}", idSolicitud, e.getMessage(), e);
+        throw new RuntimeException("No se pudieron obtener los datos de la solicitud: " + e.getMessage(), e);
+    }
+}
+
+
+
+
+
+
+private Deposito encontrarDepositoMasCercano(BigDecimal lat, BigDecimal lon) {
+    List<Deposito> todosLosDepositos = depositoRepository.findAll();
+    Deposito masCercano = null;
+    double menorDistancia = Double.MAX_VALUE;
+
+    for (Deposito depo : todosLosDepositos) {
+        // Cálculo simple de distancia euclidiana (para mayor precisión usar Haversine, pero esto sirve para el TP)
+        double cateto1 = depo.getLatitud().subtract(lat).doubleValue();
+        double cateto2 = depo.getLongitud().subtract(lon).doubleValue();
+        double distancia = Math.sqrt(cateto1 * cateto1 + cateto2 * cateto2);
+
+        if (distancia < menorDistancia) {
+            menorDistancia = distancia;
+            masCercano = depo;
+        }
+    }
+    
+    if (masCercano == null) {
+        throw new EntityNotFoundException("No hay depósitos disponibles para generar la ruta");
+    }
+    return masCercano;
+}
+
+
+
+
+
+}
+
+
+

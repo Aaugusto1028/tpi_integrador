@@ -257,11 +257,35 @@ ON CONFLICT (id_tarifa) DO NOTHING;
 
 -- Depósitos: insertar al menos 3 depósitos (1,2,3) que el flujo de pruebas usa
 -- columnas: id_deposito, nombre, calle, id_ciudad, latitud, longitud, precio_estadia
+-- ...existing code...
+-- Depósitos: insertar al menos 3 depósitos (1,2,3) que el flujo de pruebas usa
+-- columnas: id_deposito, nombre, calle, id_ciudad, latitud, longitud, precio_estadia
 INSERT INTO depositos (id_deposito, nombre, calle, id_ciudad, latitud, longitud, precio_estadia) VALUES
   (1, 'Depósito Córdoba', 'Av. Colón 100', 1, -31.4201, -64.1888, 500.00),
   (2, 'Depósito Mendoza', 'Calle San Martín 200', 2, -32.8908, -68.8272, 450.00),
-  (3, 'Depósito Buenos Aires', 'Av. 9 de Julio 300', 3, -34.6037, -58.3816, 600.00)
+  (3, 'Depósito Buenos Aires', 'Av. 9 de Julio 300', 3, -34.6037, -58.3816, 600.00),
+  (4, 'Depósito La Plata', 'Calle 7 #800', 3, -34.9211, -57.9545, 480.00),
+  (5, 'Depósito Rosario', 'Av. Pellegrini 2500', 4, -32.9442, -60.6509, 520.00),
+  (6, 'Depósito Santa Fe', 'Ruta Nacional 9 Km 470', 5, -31.6109, -60.7084, 490.00),
+  (7, 'Depósito Paraná', 'Av. Ramírez 1200', 6, -31.7330, -60.5247, 475.00),
+  (8, 'Depósito Salta', 'Ruta Nacional 9 Km 1234', 7, -24.7859, -65.4107, 550.00),
+  (9, 'Depósito Jujuy', 'Calle Gorriti 450', 8, -24.1856, -65.2995, 530.00),
+  (10, 'Depósito Tucumán', 'Av. Aconquija 3000', 9, -26.8083, -65.2176, 510.00),
+  (11, 'Depósito La Rioja', 'Calle Pelagio Luna 800', 10, -29.4119, -66.8654, 450.00),
+  (12, 'Depósito Catamarca', 'Av. Virgen del Valle 1500', 11, -28.4667, -65.4833, 480.00),
+  (13, 'Depósito San Luis', 'Ruta Nacional 7 Km 320', 12, -33.2950, -66.3356, 470.00),
+  (14, 'Depósito Neuquén', 'Av. Olascoaga 2800', 13, -38.9521, -68.0585, 520.00),
+  (15, 'Depósito Río Negro', 'Ruta Nacional 5 Km 160', 14, -41.1337, -71.3089, 540.00),
+  (16, 'Depósito Chubut', 'Calle Rivadavia 1200', 15, -42.7628, -65.0383, 560.00),
+  (17, 'Depósito Santa Cruz', 'Av. Kirchner 3500', 16, -50.3680, -72.5411, 580.00),
+  (18, 'Depósito Tierra del Fuego', 'Ruta Nacional 3 Km 20', 17, -54.8019, -68.3304, 600.00),
+  (19, 'Depósito Formosa', 'Ruta Nacional 9 Km 1850', 18, -25.5606, -60.9744, 500.00),
+  (20, 'Depósito Misiones', 'Ruta Nacional 12 Km 2340', 19, -27.4305, -55.5019, 510.00),
+  (21, 'Depósito Corrientes', 'Av. Tres de Abril 850', 20, -27.4814, -58.8221, 495.00),
+  (22, 'Depósito Entre Ríos', 'Calle Urquiza 1100', 6, -32.3881, -60.6754, 485.00),
+  (23, 'Depósito Santiago del Estero', 'Av. Libertad 2200', 21, -27.7975, -64.2614, 470.00)
 ON CONFLICT (id_deposito) DO NOTHING;
+
 
 -- Camiones adicionales (si no están): asegurar disponibilidad de camiones de prueba
 INSERT INTO camiones (patente, nombre_transportista, telefono_transportista, capacidad_peso, capacidad_volumen, consumo_combustible_km, costo_por_km, disponibilidad)

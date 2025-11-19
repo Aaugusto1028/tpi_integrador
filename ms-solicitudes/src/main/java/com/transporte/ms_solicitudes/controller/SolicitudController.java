@@ -100,7 +100,7 @@ public class SolicitudController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('CLIENTE', 'OPERADOR')")
+    @PreAuthorize("permitAll()")
     @Operation(summary = "Obtener detalles de una solicitud", description = "Obtiene los detalles completos de una solicitud específica por su ID")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Detalles de la solicitud obtenidos exitosamente", 
@@ -118,6 +118,29 @@ public class SolicitudController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Solicitud no encontrada: " + e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener solicitud: " + e.getMessage());
+        }
+    }
+
+
+    @GetMapping("/{id}/coordenadas")
+    @PreAuthorize("permitAll()")
+    @Operation(summary = "Obtener detalles de una solicitud", description = "Obtiene los detalles completos de una solicitud específica por su ID")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Coordenadas de la solicitud obtenidos exitosamente", 
+                    content = @Content(schema = @Schema(implementation = SolicitudResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "No autorizado"),
+        @ApiResponse(responseCode = "404", description = "Solicitud no encontrada")
+    })
+    public ResponseEntity<?> obtenerCoordenadas(@PathVariable Long id) {
+        try {
+            if (id == null || id <= 0) {
+                return ResponseEntity.badRequest().body("ID de solicitud inválido");
+            }
+            return ResponseEntity.ok(solicitudService.obtenerCordenadasSolicitud(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Solicitud no encontrada: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener coordenadas: " + e.getMessage());
         }
     }
 

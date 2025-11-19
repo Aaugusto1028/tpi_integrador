@@ -1,16 +1,15 @@
 package com.transporte.ms_solicitudes.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 @Data
-public class SolicitudResponseDTO {
-    private Long id;
-    private String estado;
-    private BigDecimal costoEstimado;
-    private BigDecimal costoFinal;
-    private BigDecimal tiempoEstimado;
-    private BigDecimal tiempoReal;
+@NoArgsConstructor
+@AllArgsConstructor
+public class CoordenadasSolicitudDTO {
+    private Long solicitudId;
     private BigDecimal origenLatitud;
     private BigDecimal origenLongitud;
     private BigDecimal destinoLatitud;
