@@ -240,12 +240,22 @@
 									"var jsonData = pm.response.json();",
 									"if (jsonData && jsonData.tramos && jsonData.tramos.length > 0) {",
 									"    pm.collectionVariables.set(\"id_tramo\", jsonData.tramos[0].id);",
-									"    console.log(\"Primer tramo ID: \" + jsonData.tramos[0].id);",
+									"    console.log(\"=== RUTA ELEGIDA ===\");",
+									"    console.log(\"Cantidad de tramos: \" + jsonData.tramos.length);",
+									"    console.log(\"\\nIDs de todos los tramos:\");",
+									"    for (var i = 0; i < jsonData.tramos.length; i++) {",
+									"        console.log(\"  Tramo \" + (i+1) + \": \" + jsonData.tramos[i].id + \" (\" + jsonData.tramos[i].depositoOrigen + \" → \" + jsonData.tramos[i].depositoDestino + \")\");",
+									"    }",
+									"    console.log(\"\\nPRIMER TRAMO CARGADO en id_tramo: \" + jsonData.tramos[0].id);",
 									"    if (jsonData.tramos.length > 1) {",
-									"        console.log(\"NOTA: Esta ruta tiene \" + jsonData.tramos.length + \" tramos. Se asignará solo el primero en este flujo.\");",
+									"        console.log(\"\\n⚠️  IMPORTANTE: Esta ruta tiene \" + jsonData.tramos.length + \" tramos.\");",
+									"        console.log(\"Debes ejecutar el paso (6) Asignar Camión \" + jsonData.tramos.length + \" veces:\");",
+									"        for (var i = 1; i < jsonData.tramos.length; i++) {",
+									"            console.log(\"  - Ejecución \" + (i+1) + \": Cambia id_tramo a \" + jsonData.tramos[i].id + \" antes de ejecutar\");",
+									"        }",
 									"    }",
 									"}",
-									"console.log(\"Ruta elegida. Rutas alternativas descartadas.\");"
+									"console.log(\"\\n✅ Ruta elegida. Rutas alternativas descartadas.\");"
 								],
 								"type": "text/javascript"
 							}
@@ -259,7 +269,120 @@
 					}
 				},
 				{
-					"name": "(6) Asignar Camión [OPERADOR]",
+					"name": "(6a) Obtener Camiones Disponibles [OPERADOR]",
+					"description": "Consulta qué camiones están disponibles. Guarda la lista para que (6) pueda asignarlos automáticamente sin repetir.",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"console.log(\"=== CAMIONES DISPONIBLES ===\");",
+									"",
+									"if (jsonData && Array.isArray(jsonData) && jsonData.length > 0) {",
+									"    var patentes = [];",
+									"    for (var i = 0; i < jsonData.length; i++) {",
+									"        var camion = jsonData[i];",
+									"        patentes.push(camion.patente);",
+									"        console.log(\"\\n\" + (i+1) + \". Patente: \" + camion.patente);",
+									"        console.log(\"   Capacidad Peso: \" + camion.capacidadPeso + \" kg\");",
+									"        console.log(\"   Capacidad Volumen: \" + camion.capacidadVolumen + \" m³\");",
+									"        console.log(\"   Consumo: \" + camion.consumoCombustibleKm + \" L/km\");",
+									"        console.log(\"   Costo por km: \" + camion.costoPorKm);",
+									"    }",
+									"    ",
+									"    // Guardar lista de patentes disponibles",
+									"    pm.collectionVariables.set(\"camiones_disponibles\", JSON.stringify(patentes));",
+									"    // Inicializar contador de asignaciones",
+									"    pm.collectionVariables.set(\"camion_index\", 0);",
+									"    // Inicializar array de usados",
+									"    pm.collectionVariables.set(\"camiones_usados\", JSON.stringify([]));",
+									"    ",
+									"    console.log(\"\\n✅ Guardadas \" + patentes.length + \" patentes disponibles\");",
+									"    console.log(\"Paso (6) las asignará automáticamente sin repetir.\");",
+									"} else {",
+									"    console.log(\"❌ ERROR: No hay camiones disponibles\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/camiones/buscar-apto?peso=500&volumen=50", "host": ["{{baseUrl}}"], "path": ["camiones", "buscar-apto"], "query": [{ "key": "peso", "value": "500" }, { "key": "volumen", "value": "50" }] }
+					}
+				},
+				{
+					"name": "(6) Asignar Camión [OPERADOR] - AUTOMÁTICO Y SIN REPETIR",
+					"description": "Asigna automáticamente el siguiente camión disponible (sin repetir). Repite este paso para cada tramo. IMPORTANTE: Ejecuta (6a) primero para obtener la lista de camiones.",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Obtener lista de camiones disponibles",
+									"var camionesStr = pm.collectionVariables.get(\"camiones_disponibles\");",
+									"var camionesUsadosStr = pm.collectionVariables.get(\"camiones_usados\");",
+									"",
+									"if (!camionesStr) {",
+									"    console.error(\"❌ ERROR: No hay camiones disponibles. Ejecuta primero el paso (6a)\");",
+									"    throw new Error(\"Debes ejecutar primero el paso (6a) Obtener Camiones Disponibles\");",
+									"}",
+									"",
+									"var camiones = JSON.parse(camionesStr);",
+									"var camionesUsados = JSON.parse(camionesUsadosStr || '[]');",
+									"var index = parseInt(pm.collectionVariables.get(\"camion_index\") || 0);",
+									"",
+									"// Buscar siguiente camión no usado",
+									"var camionAsignar = null;",
+									"for (var i = index; i < camiones.length; i++) {",
+									"    if (camionesUsados.indexOf(camiones[i]) === -1) {",
+									"        camionAsignar = camiones[i];",
+									"        index = i + 1;",
+									"        break;",
+									"    }",
+									"}",
+									"",
+									"if (!camionAsignar) {",
+									"    console.error(\"❌ ERROR: No hay más camiones disponibles sin usar. Se necesitarían \" + camionesUsados.length + \" y solo hay \" + camiones.length);",
+									"    throw new Error(\"No hay más camiones disponibles. Todos están asignados.\");",
+									"}",
+									"",
+									"// Guardar índice para siguiente iteración",
+									"pm.collectionVariables.set(\"camion_index\", index);",
+									"",
+									"// Agregar a usados",
+									"camionesUsados.push(camionAsignar);",
+									"pm.collectionVariables.set(\"camiones_usados\", JSON.stringify(camionesUsados));",
+									"",
+									"// Reemplazar en body",
+									"var body = pm.request.body.raw;",
+									"body = body.replace(/\\\"patenteCamion\\\":\\s*\\\"[^\\\"]*\\\"/g, '\\\"patenteCamion\\\": \\\"' + camionAsignar + '\\\"');",
+									"pm.request.body.raw = body;",
+									"",
+									"console.log(\"🚗 Asignando camión: \" + camionAsignar + \" (\" + camionesUsados.length + \" de \" + camiones.length + \")\");"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var camionAsignado = JSON.parse(pm.request.body.raw).patenteCamion;",
+									"    console.log(\"✅ Camión \" + camionAsignado + \" asignado exitosamente\");",
+									"} else {",
+									"    console.error(\"❌ Error asignando camión: \" + pm.response.status);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
 						"method": "PUT",
@@ -272,7 +395,8 @@
 					}
 				},
 				{
-					"name": "(7) Iniciar Tramo [TRANSPORTISTA]",
+					"name": "(7) Iniciar Tramo [TRANSPORTISTA] - REPETIR SI MULTIPLES TRAMOS",
+					"description": "Inicia un tramo (marca fechaHoraInicio). Si hay multiples tramos, repite para cada uno cambiando id_tramo.",
 					"request": {
 						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_transportista}}", "type": "string" }] },
 						"method": "POST",
@@ -281,7 +405,8 @@
 					}
 				},
 				{
-					"name": "(8) Finalizar Tramo [TRANSPORTISTA]",
+					"name": "(8) Finalizar Tramo [TRANSPORTISTA] - REPETIR SI MULTIPLES TRAMOS",
+					"description": "Finaliza un tramo (marca fechaHoraFin y calcula costoReal). Si hay multiples tramos, repite para cada uno cambiando id_tramo.",
 					"request": {
 						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_transportista}}", "type": "string" }] },
 						"method": "POST",

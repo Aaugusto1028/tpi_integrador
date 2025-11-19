@@ -320,14 +320,15 @@ public class RutaServiceImpl implements RutaService {
         BigDecimal costoKm = costoKmBase.multiply(BigDecimal.valueOf(tramo.getDistanciaKm()));
 
         // 4. Calcular costo de combustible
-        // consumo_litros = consumo_combustible_km * distancia_km
+        // consumo_litros = (consumo_combustible_km / 100) * distancia_km
+        // El consumo se almacena como L/100km, se convierte a L/km dividiendo por 100
         // costo_combustible = precio_litro * consumo_litros
         Double consumoKm = camion.getConsumoCombustibleKm();
         if (consumoKm == null || consumoKm < 0) {
             consumoKm = 0.0; // Valor por defecto para evitar errores
         }
         
-        double consumoTotalLitros = consumoKm * tramo.getDistanciaKm();
+        double consumoTotalLitros = (consumoKm / 100.0) * tramo.getDistanciaKm();
         BigDecimal precioLitro = tarifaBase.getPrecioLitro() != null ? tarifaBase.getPrecioLitro() : BigDecimal.ZERO;
         BigDecimal costoCombustible = precioLitro.multiply(BigDecimal.valueOf(consumoTotalLitros));
 
@@ -456,7 +457,8 @@ public class RutaServiceImpl implements RutaService {
                         .multiply(java.math.BigDecimal.valueOf(tramo.getDistanciaKm()));
                 costoKmTotal = costoKmTotal.add(costoKmTramo);
 
-                double consumoTotalLitros = camion.getConsumoCombustibleKm() * tramo.getDistanciaKm();
+                // El consumo se almacena como L/100km, se convierte a L/km dividiendo por 100
+                double consumoTotalLitros = (camion.getConsumoCombustibleKm() / 100.0) * tramo.getDistanciaKm();
                 BigDecimal costoCombustibleTramo = tarifaBase.getPrecioLitro()
                         .multiply(java.math.BigDecimal.valueOf(consumoTotalLitros));
                 costoCombustibleTotal = costoCombustibleTotal.add(costoCombustibleTramo);
@@ -522,7 +524,8 @@ public class RutaServiceImpl implements RutaService {
                         .multiply(java.math.BigDecimal.valueOf(tramo.getDistanciaKm()));
                 costoKmTotal = costoKmTotal.add(costoKmTramo);
 
-                double consumoTotalLitros = camion.getConsumoCombustibleKm() * tramo.getDistanciaKm();
+                // El consumo se almacena como L/100km, se convierte a L/km dividiendo por 100
+                double consumoTotalLitros = (camion.getConsumoCombustibleKm() / 100.0) * tramo.getDistanciaKm();
                 BigDecimal costoCombustibleTramo = tarifaBase.getPrecioLitro()
                         .multiply(java.math.BigDecimal.valueOf(consumoTotalLitros));
                 costoCombustibleTotal = costoCombustibleTotal.add(costoCombustibleTramo);
