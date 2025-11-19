@@ -56,11 +56,6 @@ public class CamionService {
         repository.deleteById(patente);
     }
 
-    // --- PENDIENTE 1: Lógica de Negocio Específica (Camiones aptos) ---
-    /*
-    * Método clave que el microservicio de Solicitudes/Rutas necesitará consumir.
-    * Busca camiones disponibles que cumplen con la capacidad de peso y volumen requeridos.
-    */
     public List<Camion> findAptos(Double pesoRequerido, Double volumenRequerido) {
         List<Camion> disponibles = repository.findByDisponibilidad(true);
         
@@ -72,7 +67,7 @@ public class CamionService {
                 .collect(Collectors.toList());
     }
     
-    // --- PENDIENTE 2: Lógica de Negocio para Transportista (Consumo de ms-rutas) ---
+    
     /**
      * Obtiene los tramos asignados al transportista desde el Microservicio de Rutas.
      * @param patenteCamionAsignado La patente del camión asociado al transportista.

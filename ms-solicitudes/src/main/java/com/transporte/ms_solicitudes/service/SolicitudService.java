@@ -106,10 +106,7 @@ public class SolicitudService {
         return mapToResponseDTO(solicitud);
     }
 
-    /**
-     * Calcula costo y tiempo estimado.
-     * Ahora recibe Double en lugar de BigDecimal para coincidir con SolicitudRequestDTO
-     */
+ 
     private CostoTiempoDTO calcularCostoTiempoEstimado(
             Double lat1, Double lon1, Double lat2, Double lon2,
             Double peso, Double volumen) {
@@ -154,11 +151,7 @@ public class SolicitudService {
         }
     }
 
-    /**
-     * Finaliza una solicitud.
-     * Obtiene automáticamente el costo real y el tiempo real desde ms-rutas.
-     * El tiempoReal se calcula basándose en las fechas de inicio/fin de los tramos (en HORAS).
-     */
+
     @Transactional
     public SolicitudResponseDTO finalizarSolicitud(Long id, FinalizarSolicitudDTO dto) {
         if (dto == null) {
@@ -210,7 +203,7 @@ public class SolicitudService {
         
         solicitud.setTiempoReal(tiempoReal);
 
-        // Registramos el estado final en el historial del contenedor
+   
         actualizarEstadoContenedor(solicitud.getContenedor().getId(), "ENTREGADA");
 
         solicitudRepository.save(solicitud);
@@ -253,7 +246,7 @@ public class SolicitudService {
      * Utiliza el historial del contenedor (EstadoContenedor) como fuente principal de verdad.
      * El estado se sincroniza automáticamente via actualizarEstadoContenedor() 
      * que se debe llamar desde ms-rutas cuando cambian los estados de tramos.
-     * (LÓGICA ACTUALIZADA PARA SOPORTAR ESTADOS INTERMEDIOS)
+
      */
     public SeguimientoDTO obtenerEstado(Long id) {
         Solicitud solicitud = solicitudRepository.findById(id)
@@ -263,7 +256,6 @@ public class SolicitudService {
         String estadoDeducido = "PENDIENTE";
         String descripcion = "Estado: PENDIENTE";
 
-        // Buscamos el estado más reciente del historial del contenedor
         EstadoContenedor estadoActual = contenedor.getEstadoActual();
 
         if (estadoActual != null && estadoActual.getNombre() != null && !estadoActual.getNombre().isBlank()) {
@@ -289,8 +281,7 @@ public class SolicitudService {
         Contenedor contenedor = contenedorRepository.findById(idContenedor)
                 .orElseThrow(() -> new EntityNotFoundException("Contenedor no encontrado"));
 
-        // --- LÓGICA IMPLEMENTADA ---
-        // 1. Crear el nuevo registro de estado
+
         EstadoContenedor nuevoRegistroEstado = new EstadoContenedor(
                 nuevoEstado,
                 LocalDateTime.now(),
@@ -308,13 +299,10 @@ public class SolicitudService {
              solicitud.setEstado(nuevoEstado);
              solicitudRepository.save(solicitud);
         }
-        // --- FIN DE LA LÓGICA ---
+    
     }
 
-    /**
-     * Mapea Solicitud a SolicitudResponseDTO.
-     * (Lógica original - sin cambios)
-     */
+
     private SolicitudResponseDTO mapToResponseDTO(Solicitud solicitud) {
         SolicitudResponseDTO dto = new SolicitudResponseDTO();
         dto.setId(solicitud.getId());
@@ -326,10 +314,7 @@ public class SolicitudService {
         return dto;
     }
 
-    /**
-     * DTO interno para costo y tiempo.
-     * (Lógica original - sin cambios)
-     */
+
     private static class CostoTiempoDTO {
         BigDecimal costo;
         BigDecimal tiempo;

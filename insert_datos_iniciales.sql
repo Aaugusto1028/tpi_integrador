@@ -17,7 +17,9 @@ ON CONFLICT DO NOTHING;
 
 -- --------------------------------------------------------------------------------
 -- Tipo de tramo: detecta columna de texto y hace insert según nombre real
+-- (SE ELIMINA/COMENTA ESTE BLOQUE DINÁMICO YA QUE CONFLICTÚA CON EL INSERT EXPLÍCITO)
 -- --------------------------------------------------------------------------------
+/*
 DO $$
 DECLARE
   txt_col text;
@@ -60,10 +62,13 @@ BEGIN
     $f$, txt_col, 'ESTIMADO','ASIGNADO','INICIADO','FINALIZADO');
   END IF;
 END$$;
+*/
 
 -- --------------------------------------------------------------------------------
 -- Depositos: detectar columnas (id, nombre/text, lat, lon, precio/costo)
+-- (SE ELIMINA/COMENTA ESTE BLOQUE DINÁMICO YA QUE INSERTA DATOS INCOMPLETOS Y CORRUPTOS)
 -- --------------------------------------------------------------------------------
+/*
 DO $$
 DECLARE
   t text := 'depositos';
@@ -136,6 +141,7 @@ BEGIN
     RAISE NOTICE 'depositos table present but required columns not found (lat/lon/price). Skipping.';
   END IF;
 END$$;
+*/
 
 -- --------------------------------------------------------------------------------
 -- Tarifas: detectar columnas y hacer INSERT
@@ -232,7 +238,7 @@ SELECT (CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_na
 -- ...existing code...
 
 -- ==================================================================================
--- INSERTS EXPLÍCIOS (compatibles con el esquema actual detectado en la BD)
+-- INSERTS EXPLÍCITOS (compatibles con el esquema actual detectado en la BD)
 -- Estas inserciones usan los nombres de columnas reales: depositos(id_deposito,nombre,calle,id_ciudad,latitud,longitud,precio_estadia),
 -- tipo_tramo(id_tipo_tramo, descripcion), tarifas(id_tarifa, precio_litro), camiones(...), clientes(...)
 -- ==================================================================================
