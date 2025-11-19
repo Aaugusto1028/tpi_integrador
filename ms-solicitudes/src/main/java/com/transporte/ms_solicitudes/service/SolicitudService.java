@@ -352,6 +352,10 @@ private CostoTiempoDTO calcularCostoTiempoEstimado(
         dto.setCostoFinal(solicitud.getCostoFinal());
         dto.setTiempoEstimado(solicitud.getTiempoEstimado());
         dto.setTiempoReal(solicitud.getTiempoReal());
+        dto.setOrigenLatitud(solicitud.getOrigenLatitud());
+        dto.setOrigenLongitud(solicitud.getOrigenLongitud());
+        dto.setDestinoLatitud(solicitud.getDestinoLatitud());
+        dto.setDestinoLongitud(solicitud.getDestinoLongitud());
         return dto;
     }
 
