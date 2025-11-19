@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime; // <-- IMPORTADO
 import java.util.List;
 import java.util.Optional; // <-- IMPORTADO
@@ -107,48 +108,76 @@ public class SolicitudService {
     }
 
  
-    private CostoTiempoDTO calcularCostoTiempoEstimado(
+private CostoTiempoDTO calcularCostoTiempoEstimado(
             Double lat1, Double lon1, Double lat2, Double lon2,
             Double peso, Double volumen) {
 
         try {
-            logger.info("Iniciando cálculo de costo/tiempo estimado: lat1={}, lon1={}, lat2={}, lon2={}, peso={}, volumen={}", 
-                    lat1, lon1, lat2, lon2, peso, volumen);
+            logger.info("Iniciando cálculo ROBUSTO de costo/tiempo estimado...");
             
-            // Obtener distancia de ms-rutas
-            logger.info("Obteniendo distancia desde ms-rutas...");
+            // 1. Obtener distancia base de Google (A -> B directo)
             DistanciaDTO distancia = rutasWebClient.obtenerDistancia(lat1, lon1, lat2, lon2);
-            logger.info("Distancia obtenida: {} metros", distancia.getDistanciaMetros());
-            BigDecimal distanciaKm = distancia.getDistanciaMetros().divide(new BigDecimal(1000));
+            BigDecimal distanciaDirectaKm = distancia.getDistanciaMetros().divide(new BigDecimal(1000));
+            
+            // MEJORA 1: Factor de Desvío (Ruta Real vs Directa)
+            // La ruta real pasa por depósitos, nunca es línea recta. Agregamos un 25% de margen.
+            BigDecimal factorDesvio = new BigDecimal("1.25");
+            BigDecimal distanciaEstimadaTotal = distanciaDirectaKm.multiply(factorDesvio);
+            
+            logger.info("Distancia directa: {} km. Distancia estimada con desvíos: {} km", 
+                    distanciaDirectaKm, distanciaEstimadaTotal);
 
-            // Obtener promedios de ms-camiones
-            logger.info("Obteniendo promedios desde ms-camiones...");
+            // 2. Obtener promedios y tarifas
             PromediosDTO promedios = camionesWebClient.obtenerPromedios(peso, volumen);
-            logger.info("Promedios obtenidos: costoPromedioPorKm={}, consumoPromedioPorKm={}", 
-                    promedios.getCostoPromedioPorKm(), promedios.getConsumoPromedioPorKm());
-
-            // Obtener tarifas de ms-rutas
-            logger.info("Obteniendo tarifas desde ms-rutas...");
             TarifaDTO tarifas = rutasWebClient.obtenerTarifas();
-            logger.info("Tarifas obtenidas: precioLitro={}", tarifas.getPrecioLitro());
 
-            // Calcular costo incluyendo estadía promedio
-            BigDecimal costoTramo = distanciaKm.multiply(promedios.getCostoPromedioPorKm());
-            BigDecimal costoCombustible = distanciaKm
-                    .multiply(promedios.getConsumoPromedioPorKm())
+            // MEJORA 2: Margen de Seguridad en Costos de Camión
+            // No uses el promedio puro, usa un margen (1.15) por si toca un camión más caro.
+            BigDecimal margenSeguridad = new BigDecimal("1.15");
+            
+            BigDecimal costoKmSeguro = promedios.getCostoPromedioPorKm().multiply(margenSeguridad);
+            BigDecimal consumoKmSeguro = promedios.getConsumoPromedioPorKm().multiply(margenSeguridad);
+
+            // Cálculo de costos de transporte
+            BigDecimal costoTramo = distanciaEstimadaTotal.multiply(costoKmSeguro);
+            BigDecimal costoCombustible = distanciaEstimadaTotal
+                    .multiply(consumoKmSeguro)
                     .multiply(tarifas.getPrecioLitro());
-            BigDecimal costoEstadiaPromedio = tarifas.getCostoEstadiaDiario() != null ? tarifas.getCostoEstadiaDiario() : BigDecimal.ZERO;
-            BigDecimal costoTotal = costoTramo.add(costoCombustible).add(costoEstadiaPromedio);
 
-            // Calcular tiempo (ejemplo: distancia / 80 km/h + 24h de margen)
-            BigDecimal tiempoHoras = distanciaKm.divide(new BigDecimal(80), 2, BigDecimal.ROUND_HALF_UP).add(new BigDecimal(24));
+            // MEJORA 3: Estimación de Estadías (Tramos)
+            // Si el viaje es largo, habrá paradas intermedias (tramos). 
+            // Estimamos 1 tramo inicial + 1 parada extra cada 600km.
+            // Ejemplo: 100km -> 1 tramo. 700km -> 2 tramos.
+            int tramosEstimados = 1 + distanciaEstimadaTotal.divide(new BigDecimal(600), 0, RoundingMode.UP).intValue();
+            
+            BigDecimal costoEstadiaDiario = tarifas.getCostoEstadiaDiario() != null 
+                    ? tarifas.getCostoEstadiaDiario() 
+                    : BigDecimal.ZERO;
+            
+            // Cobramos una estadía por cada tramo estimado
+            BigDecimal costoEstadiaTotal = costoEstadiaDiario.multiply(new BigDecimal(tramosEstimados));
 
-            logger.info("Cálculo completado: costoTotal={}, tiempoHoras={}", costoTotal, tiempoHoras);
-            return new CostoTiempoDTO(costoTotal, tiempoHoras);
+            BigDecimal costoTotal = costoTramo.add(costoCombustible).add(costoEstadiaTotal);
+            
+            // Redondear a 2 decimales
+            costoTotal = costoTotal.setScale(2, RoundingMode.HALF_UP);
+
+            // Calcular tiempo (distancia aumentada / 70 km/h promedio + 4 horas por tramo de gestión)
+            BigDecimal tiempoViaje = distanciaEstimadaTotal.divide(new BigDecimal(70), 2, RoundingMode.HALF_UP);
+            BigDecimal tiempoGestion = new BigDecimal(tramosEstimados * 4); // 4 horas por parada
+            BigDecimal tiempoTotalHoras = tiempoViaje.add(tiempoGestion);
+
+            logger.info("Estimación Final: Costo=${} (Tramos est: {}), Tiempo={}hs", 
+                    costoTotal, tramosEstimados, tiempoTotalHoras);
+            
+            return new CostoTiempoDTO(costoTotal, tiempoTotalHoras);
+            
         } catch (Exception e) {
             logger.error("Error en calcularCostoTiempoEstimado: ", e);
-            throw e;
-        }
+            // En caso de error, devolver ceros para no romper la creación, pero loguear el fallo
+            return new CostoTiempoDTO(BigDecimal.ZERO, BigDecimal.ZERO);
+        
+    }
     }
 
 
