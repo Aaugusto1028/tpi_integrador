@@ -6,6 +6,8 @@ import com.transporte.ms_solicitudes.dto.SolicitudResponseDTO;
 import com.transporte.ms_solicitudes.dto.EstadoDTO; 
 import com.transporte.ms_solicitudes.dto.FinalizarSolicitudDTO;
 import com.transporte.ms_solicitudes.service.SolicitudService;
+import com.transporte.ms_solicitudes.model.Solicitud;
+import com.transporte.ms_solicitudes.repository.SolicitudRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 // ❌ BORRA ESTA LÍNEA: import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
 import java.util.List;
+import jakarta.persistence.EntityNotFoundException;
 
 @RestController
 @RequestMapping("/solicitudes")
@@ -31,6 +34,9 @@ public class SolicitudController {
 
     @Autowired
     private SolicitudService solicitudService;
+
+    @Autowired
+    private SolicitudRepository solicitudRepository;
 
     @PostMapping
     @PreAuthorize("hasAuthority('CLIENTE')")
@@ -184,7 +190,9 @@ public class SolicitudController {
     /**
      * Endpoint interno para que otros servicios (como ms-rutas)
      * actualicen el estado del contenedor.
-     * @param idContenedor El ID del contenedor a actualizar.
+     * Acepta tanto idContenedor como idSolicitud para mayor flexibilidad.
+     * @param idContenedor El ID del contenedor a actualizar (si se proporciona).
+     * @param idSolicitud El ID de la solicitud (si se proporciona, se busca su contenedor).
      * @param estadoDTO El DTO que contiene el nuevo nombre del estado (ej. "EN TRANSITO").
      * @return ResponseEntity vacía.
      */
@@ -197,9 +205,23 @@ public class SolicitudController {
         @ApiResponse(responseCode = "404", description = "Contenedor no encontrado")
     })
     public ResponseEntity<?> actualizarEstadoContenedor(
-            @PathVariable Long idContenedor,
+            @PathVariable(required = false) Long idContenedor,
+            @RequestParam(required = false) Long idSolicitud,
             @RequestBody EstadoDTO estadoDTO) {
         try {
+            // Validar que al menos uno de los IDs sea válido ANTES de intentar hacer conversiones
+            if ((idContenedor == null || idContenedor <= 0) && (idSolicitud == null || idSolicitud <= 0)) {
+                return ResponseEntity.badRequest().body("ID de contenedor o ID de solicitud es obligatorio");
+            }
+            
+            // Si se proporciona idSolicitud (y es válido), buscar el contenedor asociado
+            if (idSolicitud != null && idSolicitud > 0) {
+                Solicitud solicitud = solicitudRepository.findById(idSolicitud)
+                        .orElseThrow(() -> new EntityNotFoundException("Solicitud no encontrada: " + idSolicitud));
+                idContenedor = solicitud.getContenedor().getId();
+            }
+            
+            // Ahora idContenedor debe ser válido
             if (idContenedor == null || idContenedor <= 0) {
                 return ResponseEntity.badRequest().body("ID de contenedor inválido");
             }

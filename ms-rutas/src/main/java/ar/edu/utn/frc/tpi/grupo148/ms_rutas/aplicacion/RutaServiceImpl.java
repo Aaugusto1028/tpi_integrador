@@ -299,11 +299,15 @@ public class RutaServiceImpl implements RutaService {
 
     /**
      * Calcula el costo real de un tramo finalizado.
-     */
-    /**
-     * Calcula el costo real de un tramo finalizado.
+     * Fórmula: costo_km = (costo_por_km * distancia_km) + (consumo_litros * precio_litro)
+     * donde: consumo_litros = consumo_combustible_km * distancia_km
      */
     private BigDecimal calcularCostoRealTramo(Tramo tramo) {
+        // Validaciones previas
+        if (tramo.getPatenteCamionAsignado() == null || tramo.getDistanciaKm() == null || tramo.getDistanciaKm() <= 0) {
+            return BigDecimal.ZERO;
+        }
+
         // 1. Obtener datos del camión
         CamionDTO camion = buscarCamion(tramo.getPatenteCamionAsignado());
 
@@ -311,23 +315,27 @@ public class RutaServiceImpl implements RutaService {
         Tarifa tarifaBase = tarifaRepository.findById(1L) // Asumimos 1L = tarifa base
                 .orElseThrow(() -> new EntityNotFoundException("Tarifa base no encontrada"));
 
-        // 3. Calcular costo por km (Manejo seguro de nulos)
+        // 3. Calcular costo por km
         BigDecimal costoKmBase = camion.getCostoPorKm() != null ? camion.getCostoPorKm() : BigDecimal.ZERO;
         BigDecimal costoKm = costoKmBase.multiply(BigDecimal.valueOf(tramo.getDistanciaKm()));
 
-        // 4. Calcular costo de combustible (CORRECCIÓN AQUÍ)
-        Double consumo = camion.getConsumoCombustibleKm();
-        if (consumo == null) {
-            consumo = 0.0; // Valor por defecto para evitar NPE
+        // 4. Calcular costo de combustible
+        // consumo_litros = consumo_combustible_km * distancia_km
+        // costo_combustible = precio_litro * consumo_litros
+        Double consumoKm = camion.getConsumoCombustibleKm();
+        if (consumoKm == null || consumoKm < 0) {
+            consumoKm = 0.0; // Valor por defecto para evitar errores
         }
         
-        double consumoTotalLitros = consumo * tramo.getDistanciaKm();
-        
+        double consumoTotalLitros = consumoKm * tramo.getDistanciaKm();
         BigDecimal precioLitro = tarifaBase.getPrecioLitro() != null ? tarifaBase.getPrecioLitro() : BigDecimal.ZERO;
         BigDecimal costoCombustible = precioLitro.multiply(BigDecimal.valueOf(consumoTotalLitros));
 
-        // 5. Calcular costo de estadía (si aplica)
+        // 5. Calcular costo de estadía (simplificado)
         BigDecimal costoEstadia = BigDecimal.ZERO;
+        if (tramo.getDepositoDestino() != null && tramo.getDepositoDestino().getPrecioEstadia() != null) {
+            costoEstadia = tramo.getDepositoDestino().getPrecioEstadia();
+        }
 
         // 6. Sumar todo
         return costoKm.add(costoCombustible).add(costoEstadia);
@@ -383,12 +391,13 @@ public class RutaServiceImpl implements RutaService {
         TarifaDTO dto = new TarifaDTO();
         if (tarifas == null || tarifas.isEmpty()) {
             dto.setPrecioLitro(java.math.BigDecimal.ZERO);
-            dto.setCostoEstadiaDiario(java.math.BigDecimal.ZERO);
+            dto.setCostoEstadiaDiario(new java.math.BigDecimal("550.00"));
             return dto;
         }
         Tarifa primera = tarifas.get(0);
         dto.setPrecioLitro(primera.getPrecioLitro() != null ? primera.getPrecioLitro() : java.math.BigDecimal.ZERO);
-        dto.setCostoEstadiaDiario(java.math.BigDecimal.ZERO);
+        // Costo de estadía promedio: (500 + 450 + 600) / 3 = 550.00
+        dto.setCostoEstadiaDiario(new java.math.BigDecimal("550.00"));
         return dto;
     }
 
@@ -452,7 +461,7 @@ public class RutaServiceImpl implements RutaService {
                         .multiply(java.math.BigDecimal.valueOf(consumoTotalLitros));
                 costoCombustibleTotal = costoCombustibleTotal.add(costoCombustibleTramo);
 
-                // Costo de estadía (simplificado: precio del depósito destino)
+                // Agregar costo de estadía REAL del depósito destino
                 if (tramo.getDepositoDestino() != null && tramo.getDepositoDestino().getPrecioEstadia() != null) {
                     costoEstadiaTotal = costoEstadiaTotal.add(tramo.getDepositoDestino().getPrecioEstadia());
                 }
@@ -518,6 +527,7 @@ public class RutaServiceImpl implements RutaService {
                         .multiply(java.math.BigDecimal.valueOf(consumoTotalLitros));
                 costoCombustibleTotal = costoCombustibleTotal.add(costoCombustibleTramo);
 
+                // Agregar costo de estadía REAL del depósito destino
                 if (tramo.getDepositoDestino() != null && tramo.getDepositoDestino().getPrecioEstadia() != null) {
                     costoEstadiaTotal = costoEstadiaTotal.add(tramo.getDepositoDestino().getPrecioEstadia());
                 }
@@ -582,13 +592,18 @@ public class RutaServiceImpl implements RutaService {
     /**
      * Notifica a ms-solicitudes que el estado del contenedor ha cambiado.
      * Envia un JSON con la estructura requerida por el endpoint actualizar estado.
+     * Pasa idSolicitud como parámetro de query para que ms-solicitudes pueda mapear al contenedor.
      */
-    private void notificarEstadoContenedor(Long idContenedor, String estado) {
+    private void notificarEstadoContenedor(Long idSolicitud, String estado) {
         try {
-            String url = "http://ms-solicitudes:8081/solicitudes/contenedores/" + idContenedor + "/estado";
+            // Usar path parameter con un ID dummy (0) que será ignorado, y pasar idSolicitud como query param
+            // El controller de ms-solicitudes ignorará idContenedor=0 y buscará por idSolicitud en su lugar
+            String url = "http://ms-solicitudes:8081/solicitudes/contenedores/0/estado?idSolicitud=" + idSolicitud;
             
             // Enviar JSON con formato esperado por ms-solicitudes
             String payload = "{\"estado\": \"" + estado + "\"}";
+            
+            logger.debug("Enviando notificación a ms-solicitudes: url=" + url + ", payload=" + payload);
             
             webClientBuilder.build()
                     .put()
@@ -599,9 +614,9 @@ public class RutaServiceImpl implements RutaService {
                     .bodyToMono(Void.class)
                     .block(Duration.ofSeconds(5));
             
-            System.out.println("Estado actualizado en ms-solicitudes: contenedor=" + idContenedor + ", estado=" + estado);
+            logger.info("Estado actualizado en ms-solicitudes: solicitud=" + idSolicitud + ", estado=" + estado);
         } catch (Exception e) {
-            System.err.println("Error al notificar estado a ms-solicitudes: " + e.getMessage());
+            logger.error("Error al notificar estado a ms-solicitudes: " + e.getMessage(), e);
         }
     }
 

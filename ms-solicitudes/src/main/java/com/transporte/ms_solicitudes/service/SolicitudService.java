@@ -135,12 +135,13 @@ public class SolicitudService {
             TarifaDTO tarifas = rutasWebClient.obtenerTarifas();
             logger.info("Tarifas obtenidas: precioLitro={}", tarifas.getPrecioLitro());
 
-            // Calcular costo
+            // Calcular costo incluyendo estadía promedio
             BigDecimal costoTramo = distanciaKm.multiply(promedios.getCostoPromedioPorKm());
             BigDecimal costoCombustible = distanciaKm
                     .multiply(promedios.getConsumoPromedioPorKm())
                     .multiply(tarifas.getPrecioLitro());
-            BigDecimal costoTotal = costoTramo.add(costoCombustible).add(tarifas.getCostoEstadiaDiario());
+            BigDecimal costoEstadiaPromedio = tarifas.getCostoEstadiaDiario() != null ? tarifas.getCostoEstadiaDiario() : BigDecimal.ZERO;
+            BigDecimal costoTotal = costoTramo.add(costoCombustible).add(costoEstadiaPromedio);
 
             // Calcular tiempo (ejemplo: distancia / 80 km/h + 24h de margen)
             BigDecimal tiempoHoras = distanciaKm.divide(new BigDecimal(80), 2, BigDecimal.ROUND_HALF_UP).add(new BigDecimal(24));
@@ -249,31 +250,34 @@ public class SolicitudService {
 
     /**
      * Obtiene el seguimiento de una solicitud.
-     * (LÓGICA ACTUALIZADA)
+     * Utiliza el historial del contenedor (EstadoContenedor) como fuente principal de verdad.
+     * El estado se sincroniza automáticamente via actualizarEstadoContenedor() 
+     * que se debe llamar desde ms-rutas cuando cambian los estados de tramos.
+     * (LÓGICA ACTUALIZADA PARA SOPORTAR ESTADOS INTERMEDIOS)
      */
     public SeguimientoDTO obtenerEstado(Long id) {
         Solicitud solicitud = solicitudRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Solicitud no encontrada"));
 
-        // CAMBIO 1: Buscamos el estado actual real desde el historial del contenedor
         Contenedor contenedor = solicitud.getContenedor();
-        EstadoContenedor estadoActual = contenedor.getEstadoActual(); // Usamos el helper de Contenedor.java
+        String estadoDeducido = "PENDIENTE";
+        String descripcion = "Estado: PENDIENTE";
 
-        if (estadoActual != null) {
-            // El DTO de seguimiento pide "estado" y "ubicacion".
-            // Por ahora, usamos el nombre del estado (ej. "EN_DEPOSITO") como ubicación.
-            // En una versión futura, el 'EstadoContenedor' podría tener un campo 'ubicacion'.
-            return new SeguimientoDTO(
-                    estadoActual.getNombre(),
-                    "Ubicación: " + estadoActual.getNombre() 
-            );
+        // Buscamos el estado más reciente del historial del contenedor
+        EstadoContenedor estadoActual = contenedor.getEstadoActual();
+
+        if (estadoActual != null && estadoActual.getNombre() != null && !estadoActual.getNombre().isBlank()) {
+            estadoDeducido = estadoActual.getNombre();
+            descripcion = "Ubicación: " + estadoActual.getNombre() + " (actualizado a: " + estadoActual.getFecha() + ")";
+            logger.info("Estado de solicitud {} obtenido desde historial del contenedor: {}", id, estadoDeducido);
+        } else if (solicitud.getEstado() != null && !solicitud.getEstado().isBlank()) {
+            // Fallback al campo estado de la solicitud si no hay historial
+            estadoDeducido = solicitud.getEstado();
+            descripcion = "Estado: " + estadoDeducido;
+            logger.info("Estado de solicitud {} obtenido desde campo estado (sin historial): {}", id, estadoDeducido);
         }
 
-        // Fallback si el historial está vacío (no debería pasar)
-        return new SeguimientoDTO(
-                solicitud.getEstado(),
-                "Estado: " + solicitud.getEstado()
-        );
+        return new SeguimientoDTO(estadoDeducido, descripcion);
     }
 
     /**
