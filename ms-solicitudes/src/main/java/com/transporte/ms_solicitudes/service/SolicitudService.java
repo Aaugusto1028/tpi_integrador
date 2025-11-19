@@ -120,8 +120,8 @@ private CostoTiempoDTO calcularCostoTiempoEstimado(
             BigDecimal distanciaDirectaKm = distancia.getDistanciaMetros().divide(new BigDecimal(1000));
             
             // MEJORA 1: Factor de Desvío (Ruta Real vs Directa)
-            // La ruta real pasa por depósitos, nunca es línea recta. Agregamos un 25% de margen.
-            BigDecimal factorDesvio = new BigDecimal("1.25");
+            // La ruta real pasa por depósitos, nunca es línea recta. Agregamos un 5% de margen.
+            BigDecimal factorDesvio = new BigDecimal("1.05");
             BigDecimal distanciaEstimadaTotal = distanciaDirectaKm.multiply(factorDesvio);
             
             logger.info("Distancia directa: {} km. Distancia estimada con desvíos: {} km", 
@@ -132,8 +132,8 @@ private CostoTiempoDTO calcularCostoTiempoEstimado(
             TarifaDTO tarifas = rutasWebClient.obtenerTarifas();
 
             // MEJORA 2: Margen de Seguridad en Costos de Camión
-            // No uses el promedio puro, usa un margen (1.15) por si toca un camión más caro.
-            BigDecimal margenSeguridad = new BigDecimal("1.15");
+            // No uses el promedio puro, usa un margen (1.02) por si toca un camión más caro.
+            BigDecimal margenSeguridad = new BigDecimal("1.02");
             
             BigDecimal costoKmSeguro = promedios.getCostoPromedioPorKm().multiply(margenSeguridad);
             BigDecimal consumoKmSeguro = promedios.getConsumoPromedioPorKm().multiply(margenSeguridad);

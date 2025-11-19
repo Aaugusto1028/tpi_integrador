@@ -146,7 +146,7 @@
 						"header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"clienteDni\": \"12345678\",\n    \"pesoContenedor\": 500.0,\n    \"volumenContenedor\": 50.0,\n    \"origenLatitud\": -31.4201,\n    \"origenLongitud\": -64.1888,\n    \"destinoLatitud\": -31.4135,\n    \"destinoLongitud\": -64.1810\n}"
+							"raw": "{\n    \"clienteDni\": \"12345678\",\n    \"pesoContenedor\": 500.0,\n    \"volumenContenedor\": 50.0,\n    \"origenLatitud\": -31.4201,\n    \"origenLongitud\": -64.1888,\n    \"destinoLatitud\": -30.6833,\n    \"destinoLongitud\": -64.0167\n}"
 						},
 						"url": { "raw": "{{baseUrl}}/solicitudes", "host": ["{{baseUrl}}"], "path": ["solicitudes"] }
 					}
