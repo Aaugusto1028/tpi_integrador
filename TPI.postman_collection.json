@@ -152,7 +152,7 @@
 					}
 				},
 				{
-					"name": "(2) Crear Ruta [OPERADOR]",
+					"name": "(2) RUTAS ALTERNATIVAS: Crear Primera Ruta [OPERADOR]",
 					"event": [
 						{
 							"listen": "test",
@@ -160,11 +160,11 @@
 								"exec": [
 									"pm.test(\"Status code is 200 or 201\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
 									"var jsonData = pm.response.json();",
-									"// Capturamos el ID del primer tramo para asignarle camión",
+									"pm.collectionVariables.set(\"id_ruta_1\", jsonData.id);",
 									"if(jsonData.tramos && jsonData.tramos.length > 0) {",
 									"    pm.collectionVariables.set(\"id_tramo\", jsonData.tramos[0].id);",
-									"    console.log(\"Tramo ID: \" + jsonData.tramos[0].id);",
-									"}"
+									"}",
+									"console.log(\"Ruta 1 ID: \" + jsonData.id);"
 								],
 								"type": "text/javascript"
 							}
@@ -182,7 +182,65 @@
 					}
 				},
 				{
-					"name": "(3) Asignar Camión [OPERADOR]",
+					"name": "(3) RUTAS ALTERNATIVAS: Crear Segunda Ruta Alternativa [OPERADOR]",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 201\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+									"var jsonData = pm.response.json();",
+									"pm.collectionVariables.set(\"id_ruta_2\", jsonData.id);",
+									"console.log(\"Ruta 2 ID: \" + jsonData.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"idSolicitud\": {{id_solicitud}},\n    \"tramos\": [\n        {\n            \"idDepositoOrigen\": 1,\n            \"idDepositoDestino\": 3,\n            \"idTipoTramo\": 1\n        },\n        {\n            \"idDepositoOrigen\": 3,\n            \"idDepositoDestino\": 2,\n            \"idTipoTramo\": 1\n        }\n    ]\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/rutas", "host": ["{{baseUrl}}"], "path": ["rutas"] }
+					}
+				},
+				{
+					"name": "(4) RUTAS ALTERNATIVAS: Consultar Todas las Rutas [OPERADOR]",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+									"var jsonData = pm.response.json();",
+									"console.log(\"Rutas alternativas encontradas: \" + jsonData.length);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/rutas/solicitud/{{id_solicitud}}", "host": ["{{baseUrl}}"], "path": ["rutas", "solicitud", "{{id_solicitud}}"] }
+					}
+				},
+				{
+					"name": "(5) RUTAS ALTERNATIVAS: Asignar Ruta Elegida [OPERADOR]",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
+						"method": "POST",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/rutas/{{id_ruta_1}}/asignar", "host": ["{{baseUrl}}"], "path": ["rutas", "{{id_ruta_1}}", "asignar"] }
+					}
+				},
+				{
+					"name": "(6) Asignar Camión [OPERADOR]",
 					"request": {
 						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
 						"method": "PUT",
@@ -195,7 +253,7 @@
 					}
 				},
 				{
-					"name": "(4) Iniciar Tramo [TRANSPORTISTA]",
+					"name": "(7) Iniciar Tramo [TRANSPORTISTA]",
 					"request": {
 						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_transportista}}", "type": "string" }] },
 						"method": "POST",
@@ -204,7 +262,7 @@
 					}
 				},
 				{
-					"name": "(5) Finalizar Tramo [TRANSPORTISTA]",
+					"name": "(8) Finalizar Tramo [TRANSPORTISTA]",
 					"request": {
 						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_transportista}}", "type": "string" }] },
 						"method": "POST",
@@ -213,7 +271,7 @@
 					}
 				},
 				{
-					"name": "(6) Seguimiento Solicitud [CLIENTE]",
+					"name": "(9) Seguimiento Solicitud [CLIENTE]",
 					"request": {
 						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_cliente}}", "type": "string" }] },
 						"method": "GET",
@@ -222,7 +280,7 @@
 					}
 				},
 				{
-					"name": "(7) Finalizar Solicitud [OPERADOR]",
+					"name": "(10) Finalizar Solicitud [OPERADOR]",
 					"request": {
 						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
 						"method": "PUT",
@@ -239,6 +297,8 @@
 	],
 	"variable": [
 		{ "key": "id_solicitud", "value": "" },
-		{ "key": "id_tramo", "value": "" }
+		{ "key": "id_tramo", "value": "" },
+		{ "key": "id_ruta_1", "value": "" },
+		{ "key": "id_ruta_2", "value": "" }
 	]
 }

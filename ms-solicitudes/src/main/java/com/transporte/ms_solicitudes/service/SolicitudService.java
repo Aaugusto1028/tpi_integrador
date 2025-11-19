@@ -160,22 +160,39 @@ public class SolicitudService {
      */
     @Transactional
     public SolicitudResponseDTO finalizarSolicitud(Long id, FinalizarSolicitudDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("DTO de finalización no puede ser nulo");
+        }
+        
         Solicitud solicitud = solicitudRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Solicitud no encontrada"));
 
         solicitud.setEstado("ENTREGADA");
         
-        // Determinar el costo final
-        BigDecimal costoFinal = dto.getCostoFinal();
-        try {
-            // Intentar obtener el costo real de ms-rutas usando el id de la solicitud
-            CostoTrasladoDTO costoTraslado = rutasWebClient.obtenerCostoTrasladoRealPorSolicitud(id);
-            if (costoTraslado != null && costoTraslado.getCostoTotal() != null) {
-                costoFinal = costoTraslado.getCostoTotal();
+        // Determinar el costo final: usar el costoEstimado como costoFinal si no se proporciona uno calculado
+        BigDecimal costoFinal = BigDecimal.ZERO;
+        
+        // Si el cliente envía un costoFinal válido (mayor a 0), usarlo
+        if (dto.getCostoFinal() != null && dto.getCostoFinal().signum() > 0) {
+            costoFinal = dto.getCostoFinal();
+        } else {
+            // Si no se envía, intentar obtener del costo estimado de la solicitud
+            if (solicitud.getCostoEstimado() != null && solicitud.getCostoEstimado().signum() > 0) {
+                costoFinal = solicitud.getCostoEstimado();
+                logger.info("Usando costoEstimado como costoFinal para solicitud {}: {}", id, costoFinal);
+            } else {
+                // Como último recurso, intentar obtener de ms-rutas
+                try {
+                    CostoTrasladoDTO costoTraslado = rutasWebClient.obtenerCostoTrasladoRealPorSolicitud(id);
+                    if (costoTraslado != null && costoTraslado.getCostoTotal() != null) {
+                        costoFinal = costoTraslado.getCostoTotal();
+                        logger.info("Costo final obtenido de ms-rutas para solicitud {}: {}", id, costoFinal);
+                    }
+                } catch (Exception e) {
+                    logger.warn("No se pudo obtener costo real de ms-rutas para idSolicitud={}: {}", id, e.getMessage());
+                    // Si todo falla, dejar costoFinal en ZERO (ya está asignado)
+                }
             }
-        } catch (Exception e) {
-            // Si falla la obtención del costo real, usamos el del DTO
-            System.err.println("No se pudo obtener costo real de ms-rutas para idSolicitud=" + id + ": " + e.getMessage());
         }
         
         solicitud.setCostoFinal(costoFinal);
