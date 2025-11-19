@@ -23,6 +23,7 @@ public class SecurityConfig {
                         // Endpoints públicos que no requieren autenticación
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/rutas/tarifas").permitAll()
+                        .requestMatchers("/rutas/distancia").permitAll()
                         .requestMatchers("/rutas/solicitud/*/costo-real").permitAll()
                         .requestMatchers("/rutas/patente/*/tramos").permitAll()
                         .requestMatchers("/rutas/publico/**").permitAll()

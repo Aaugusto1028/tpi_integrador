@@ -1,12 +1,17 @@
 package com.transporte.ms_solicitudes.client;
 
 import com.transporte.ms_solicitudes.dto.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 @Component
 public class RutasWebClient {
+
+    private static final Logger logger = LoggerFactory.getLogger(RutasWebClient.class);
 
     @Autowired
     private WebClient webClient;
@@ -20,20 +25,32 @@ public class RutasWebClient {
                 new java.math.BigDecimal(lat2),
                 new java.math.BigDecimal(lon2)
         );
-        return webClient.post()
-                .uri(MS_RUTAS_URL + "/distancia")
-                .bodyValue(request)
-                .retrieve()
-                .bodyToMono(DistanciaDTO.class)
-                .block();
+        try {
+            logger.info("Llamando a ms-rutas/distancia con coordenadas: ({}, {}) -> ({}, {})", lat1, lon1, lat2, lon2);
+            return webClient.post()
+                    .uri(MS_RUTAS_URL + "/distancia")
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(DistanciaDTO.class)
+                    .block();
+        } catch (Exception e) {
+            logger.error("Error al obtener distancia desde ms-rutas: {}", e.getMessage(), e);
+            throw new RuntimeException("No se pudo obtener la distancia", e);
+        }
     }
 
     public TarifaDTO obtenerTarifas() {
-        return webClient.get()
-                .uri(MS_RUTAS_URL + "/tarifas")
-                .retrieve()
-                .bodyToMono(TarifaDTO.class)
-                .block();
+        try {
+            logger.info("Llamando a ms-rutas/tarifas");
+            return webClient.get()
+                    .uri(MS_RUTAS_URL + "/tarifas")
+                    .retrieve()
+                    .bodyToMono(TarifaDTO.class)
+                    .block();
+        } catch (Exception e) {
+            logger.error("Error al obtener tarifas desde ms-rutas: {}", e.getMessage(), e);
+            throw new RuntimeException("No se pudo obtener las tarifas", e);
+        }
     }
 
     public String obtenerUbicacionActual(Long idContenedor) {

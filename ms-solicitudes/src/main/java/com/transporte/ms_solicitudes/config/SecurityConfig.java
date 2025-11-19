@@ -25,6 +25,7 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                .requestMatchers("/solicitudes/contenedores/**").permitAll() // Permite que ms-rutas actualice estado
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

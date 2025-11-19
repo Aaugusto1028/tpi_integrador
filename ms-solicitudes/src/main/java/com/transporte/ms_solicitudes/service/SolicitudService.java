@@ -11,6 +11,8 @@ import com.transporte.ms_solicitudes.repository.ContenedorRepository;
 import com.transporte.ms_solicitudes.repository.EstadoContenedorRepository; // <-- IMPORTADO
 import com.transporte.ms_solicitudes.repository.SolicitudRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class SolicitudService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SolicitudService.class);
 
     @Autowired
     private SolicitudRepository solicitudRepository;
@@ -80,6 +84,7 @@ public class SolicitudService {
             solicitud.setTiempoEstimado(estimado.tiempo);
         } catch (Exception e) {
             // Manejo de error si los otros servicios fallan
+            logger.error("Error al calcular costo/tiempo estimado: ", e);
             solicitud.setCostoEstimado(BigDecimal.ZERO);
             solicitud.setTiempoEstimado(BigDecimal.ZERO);
         }
@@ -109,29 +114,43 @@ public class SolicitudService {
             Double lat1, Double lon1, Double lat2, Double lon2,
             Double peso, Double volumen) {
 
-        // Obtener distancia de ms-rutas
-        DistanciaDTO distancia = rutasWebClient.obtenerDistancia(
-                lat1, lon1, lat2, lon2
-        );
-        BigDecimal distanciaKm = distancia.getDistanciaMetros().divide(new BigDecimal(1000));
+        try {
+            logger.info("Iniciando cálculo de costo/tiempo estimado: lat1={}, lon1={}, lat2={}, lon2={}, peso={}, volumen={}", 
+                    lat1, lon1, lat2, lon2, peso, volumen);
+            
+            // Obtener distancia de ms-rutas
+            logger.info("Obteniendo distancia desde ms-rutas...");
+            DistanciaDTO distancia = rutasWebClient.obtenerDistancia(lat1, lon1, lat2, lon2);
+            logger.info("Distancia obtenida: {} metros", distancia.getDistanciaMetros());
+            BigDecimal distanciaKm = distancia.getDistanciaMetros().divide(new BigDecimal(1000));
 
-        // Obtener promedios de ms-camiones
-        PromediosDTO promedios = camionesWebClient.obtenerPromedios(peso, volumen);
+            // Obtener promedios de ms-camiones
+            logger.info("Obteniendo promedios desde ms-camiones...");
+            PromediosDTO promedios = camionesWebClient.obtenerPromedios(peso, volumen);
+            logger.info("Promedios obtenidos: costoPromedioPorKm={}, consumoPromedioPorKm={}", 
+                    promedios.getCostoPromedioPorKm(), promedios.getConsumoPromedioPorKm());
 
-        // Obtener tarifas de ms-rutas
-        TarifaDTO tarifas = rutasWebClient.obtenerTarifas();
+            // Obtener tarifas de ms-rutas
+            logger.info("Obteniendo tarifas desde ms-rutas...");
+            TarifaDTO tarifas = rutasWebClient.obtenerTarifas();
+            logger.info("Tarifas obtenidas: precioLitro={}", tarifas.getPrecioLitro());
 
-        // Calcular costo
-        BigDecimal costoTramo = distanciaKm.multiply(promedios.getCostoPromedioPorKm());
-        BigDecimal costoCombustible = distanciaKm
-                .multiply(promedios.getConsumoPromedioPorKm())
-                .multiply(tarifas.getPrecioLitro());
-        BigDecimal costoTotal = costoTramo.add(costoCombustible).add(tarifas.getCostoEstadiaDiario());
+            // Calcular costo
+            BigDecimal costoTramo = distanciaKm.multiply(promedios.getCostoPromedioPorKm());
+            BigDecimal costoCombustible = distanciaKm
+                    .multiply(promedios.getConsumoPromedioPorKm())
+                    .multiply(tarifas.getPrecioLitro());
+            BigDecimal costoTotal = costoTramo.add(costoCombustible).add(tarifas.getCostoEstadiaDiario());
 
-        // Calcular tiempo (ejemplo: distancia / 80 km/h + 24h de margen)
-        BigDecimal tiempoHoras = distanciaKm.divide(new BigDecimal(80), 2, BigDecimal.ROUND_HALF_UP).add(new BigDecimal(24));
+            // Calcular tiempo (ejemplo: distancia / 80 km/h + 24h de margen)
+            BigDecimal tiempoHoras = distanciaKm.divide(new BigDecimal(80), 2, BigDecimal.ROUND_HALF_UP).add(new BigDecimal(24));
 
-        return new CostoTiempoDTO(costoTotal, tiempoHoras);
+            logger.info("Cálculo completado: costoTotal={}, tiempoHoras={}", costoTotal, tiempoHoras);
+            return new CostoTiempoDTO(costoTotal, tiempoHoras);
+        } catch (Exception e) {
+            logger.error("Error en calcularCostoTiempoEstimado: ", e);
+            throw e;
+        }
     }
 
     /**

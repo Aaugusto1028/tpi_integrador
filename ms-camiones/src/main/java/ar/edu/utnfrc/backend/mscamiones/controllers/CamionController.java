@@ -201,8 +201,8 @@ public class CamionController {
 
     // Endpoint: GET /camiones/promedios?peso=...&volumen=...
     @GetMapping("/promedios")
-    @PreAuthorize("hasAuthority('OPERADOR')")
-    @Operation(summary = "Obtener promedios de camiones", description = "Calcula y obtiene promedios de características de camiones aptos para peso y volumen especificados")
+    @PreAuthorize("permitAll()")
+    @Operation(summary = "Obtener promedios de camiones", description = "Calcula y obtiene promedios de características de camiones aptos para peso y volumen especificados (acceso público para comunicación entre servicios)")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Promedios calculados exitosamente", 
                     content = @Content(schema = @Schema(implementation = PromediosDTO.class))),

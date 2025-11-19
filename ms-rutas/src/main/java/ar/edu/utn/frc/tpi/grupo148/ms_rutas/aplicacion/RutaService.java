@@ -7,6 +7,7 @@ import ar.edu.utn.frc.tpi.grupo148.ms_rutas.dominio.Tramo;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.TarifaDTO;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.CostoTrasladoDTO;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.TramoDTO;
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.RutaDTO;
 import java.util.List;
 
 public interface RutaService {
@@ -36,4 +37,10 @@ public interface RutaService {
 
     // Método para obtener tramos asignados a una patente (devuelve TramoDTO con todos los datos)
     List<TramoDTO> obtenerTramosAsignadosPorPatente(String patente);
+
+    // Método para obtener una ruta con todos sus tramos y detalles completos (RutaDTO)
+    RutaDTO obtenerRutaConDetalles(Long idRuta);
+
+    // Método para obtener todas las rutas de una solicitud con sus tramos y detalles completos
+    List<RutaDTO> obtenerRutasConDetallesPorSolicitud(Long idSolicitud);
 }

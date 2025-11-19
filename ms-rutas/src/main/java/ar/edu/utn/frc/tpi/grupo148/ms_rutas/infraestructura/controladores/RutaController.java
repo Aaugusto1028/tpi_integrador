@@ -119,9 +119,9 @@ public class RutaController {
      */
     @GetMapping("/solicitud/{idSolicitud}")
     @PreAuthorize("hasAuthority('OPERADOR')")
-    @Operation(summary = "Obtener rutas por solicitud", description = "Obtiene todas las rutas asociadas a una solicitud específica")
+    @Operation(summary = "Obtener rutas por solicitud (Rutas Alternativas)", description = "Obtiene todas las rutas (alternativas) asociadas a una solicitud específica, con todos sus tramos y costos/tiempos estimados")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Rutas obtenidas exitosamente"),
+        @ApiResponse(responseCode = "200", description = "Rutas obtenidas exitosamente con detalles completos"),
         @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
         @ApiResponse(responseCode = "204", description = "No hay rutas para esta solicitud")
     })
@@ -130,11 +130,11 @@ public class RutaController {
             if (idSolicitud == null || idSolicitud <= 0) {
                 return ResponseEntity.badRequest().body("ID de solicitud inválido");
             }
-            java.util.List<Ruta> rutas = rutaRepository.findByIdSolicitud(idSolicitud);
-            if (rutas == null || rutas.isEmpty()) {
+            List<ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.RutaDTO> rutasDTO = rutaService.obtenerRutasConDetallesPorSolicitud(idSolicitud);
+            if (rutasDTO == null || rutasDTO.isEmpty()) {
                 return ResponseEntity.noContent().build();
             }
-            return ResponseEntity.ok(rutas);
+            return ResponseEntity.ok(rutasDTO);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener rutas: " + e.getMessage());
         }

@@ -7,6 +7,7 @@ import ar.edu.utn.frc.tpi.grupo148.ms_rutas.repositorios.*;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.TarifaDTO;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.CostoTrasladoDTO;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.TramoDTO;
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.RutaDTO;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -137,7 +138,17 @@ public class RutaServiceImpl implements RutaService {
         BigDecimal costoReal = calcularCostoRealTramo(tramo);
         tramo.setCostoReal(costoReal);
 
-        return tramoRepository.save(tramo);
+        Tramo tramoGuardado = tramoRepository.save(tramo);
+
+        // NUEVO: Notificar a ms-solicitudes que el contenedor ha sido entregado
+        try {
+            notificarSolicitudEstadoContenedor(tramo.getRuta().getIdSolicitud(), "ENTREGADA");
+        } catch (Exception e) {
+            System.err.println("Error notificando a ms-solicitudes: " + e.getMessage());
+            // No re-lanzamos la excepción para no afectar la finalización del tramo
+        }
+
+        return tramoGuardado;
     }
 
     // --- MÉTODOS PRIVADOS (Lógica interna) ---
@@ -545,5 +556,122 @@ public class RutaServiceImpl implements RutaService {
         }
 
         return tramosDTO;
+    }
+
+    /**
+     * Notifica a ms-solicitudes que el estado del contenedor ha cambiado
+     */
+    private void notificarSolicitudEstadoContenedor(Long idSolicitud, String nuevoEstado) {
+        try {
+            // Llamar al endpoint de ms-solicitudes para actualizar estado del contenedor
+            String url = "http://ms-solicitudes:8081/solicitudes/contenedores/" + idSolicitud + "/estado";
+            
+            webClientBuilder.build()
+                    .put()
+                    .uri(url)
+                    .bodyValue("{\"estado\": \"" + nuevoEstado + "\"}")
+                    .retrieve()
+                    .bodyToMono(Void.class)
+                    .block(Duration.ofSeconds(5));
+            
+            System.out.println("Notificación enviada a ms-solicitudes: idSolicitud=" + idSolicitud + ", estado=" + nuevoEstado);
+        } catch (Exception e) {
+            System.err.println("Error notificando a ms-solicitudes sobre estado de contenedor: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Obtiene una ruta completa con todos sus tramos y detalles.
+     * Convierte la entidad Ruta a RutaDTO incluyendo información detallada de cada tramo.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public RutaDTO obtenerRutaConDetalles(Long idRuta) {
+        Ruta ruta = rutaRepository.findById(idRuta)
+                .orElseThrow(() -> new EntityNotFoundException("Ruta no encontrada: " + idRuta));
+
+        return convertirRutaADTO(ruta);
+    }
+
+    /**
+     * Obtiene todas las rutas de una solicitud con sus tramos y detalles completos.
+     * Útil para consultar las rutas alternativas de una solicitud.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<RutaDTO> obtenerRutasConDetallesPorSolicitud(Long idSolicitud) {
+        List<Ruta> rutas = rutaRepository.findByIdSolicitud(idSolicitud);
+        List<RutaDTO> rutasDTO = new ArrayList<>();
+
+        if (rutas != null && !rutas.isEmpty()) {
+            for (Ruta ruta : rutas) {
+                rutasDTO.add(convertirRutaADTO(ruta));
+            }
+        }
+
+        return rutasDTO;
+    }
+
+    /**
+     * Método privado que convierte una entidad Ruta a RutaDTO.
+     * Incluye todos los detalles de los tramos, cálculo de tiempos y costos totales.
+     */
+    private RutaDTO convertirRutaADTO(Ruta ruta) {
+        RutaDTO rutaDTO = new RutaDTO();
+        rutaDTO.setId(ruta.getId());
+        rutaDTO.setIdSolicitud(ruta.getIdSolicitud());
+        rutaDTO.setCantidadTramos(ruta.getCantidadTramos());
+        rutaDTO.setCantidadDepositos(ruta.getCantidadDepositos());
+        rutaDTO.setAsignada(ruta.getAsignada());
+
+        BigDecimal costoTotalEstimado = BigDecimal.ZERO;
+        Double tiempoTotalEstimado = 0.0;
+        List<RutaDTO.TramoDetalleDTO> tramosDTO = new ArrayList<>();
+
+        if (ruta.getTramos() != null && !ruta.getTramos().isEmpty()) {
+            for (Tramo tramo : ruta.getTramos()) {
+                RutaDTO.TramoDetalleDTO tramoDTO = new RutaDTO.TramoDetalleDTO();
+                
+                tramoDTO.setId(tramo.getId());
+                tramoDTO.setDepositoOrigen(tramo.getDepositoOrigen() != null ? tramo.getDepositoOrigen().getNombre() : "N/A");
+                tramoDTO.setDepositoDestino(tramo.getDepositoDestino() != null ? tramo.getDepositoDestino().getNombre() : "N/A");
+                tramoDTO.setTipoTramo(tramo.getTipoTramo() != null ? tramo.getTipoTramo().getDescripcion() : "N/A");
+                tramoDTO.setEstado(tramo.getEstadoTramo() != null ? tramo.getEstadoTramo().getNombre() : "N/A");
+                tramoDTO.setDistanciaKm(tramo.getDistanciaKm());
+                tramoDTO.setCostoAproximado(tramo.getCostoAproximado());
+                tramoDTO.setPatenteCamionAsignado(tramo.getPatenteCamionAsignado());
+                tramoDTO.setCostoReal(tramo.getCostoReal());
+                
+                // Convertir fechas a String
+                if (tramo.getFechaHoraInicio() != null) {
+                    tramoDTO.setFechaHoraInicio(tramo.getFechaHoraInicio().toString());
+                }
+                if (tramo.getFechaHoraFin() != null) {
+                    tramoDTO.setFechaHoraFin(tramo.getFechaHoraFin().toString());
+                }
+
+                // Calcular tiempo estimado para este tramo (distancia / velocidad promedio)
+                // Asumimos velocidad promedio de 80 km/h
+                Double tiempoHoras = 0.0;
+                if (tramo.getDistanciaKm() != null && tramo.getDistanciaKm() > 0) {
+                    tiempoHoras = tramo.getDistanciaKm() / 80.0; // 80 km/h velocidad promedio
+                }
+                tramoDTO.setTiempoEstimadoHoras(tiempoHoras);
+
+                // Acumular costos y tiempos
+                if (tramo.getCostoAproximado() != null) {
+                    costoTotalEstimado = costoTotalEstimado.add(tramo.getCostoAproximado());
+                }
+                tiempoTotalEstimado += tiempoHoras;
+
+                tramosDTO.add(tramoDTO);
+            }
+        }
+
+        rutaDTO.setTramos(tramosDTO);
+        rutaDTO.setCostoEstimadoTotal(costoTotalEstimado);
+        rutaDTO.setTiempoEstimadoTotal(tiempoTotalEstimado);
+
+        return rutaDTO;
     }
 }
