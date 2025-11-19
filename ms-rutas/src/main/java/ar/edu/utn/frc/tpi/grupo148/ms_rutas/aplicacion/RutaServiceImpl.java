@@ -102,7 +102,16 @@ public class RutaServiceImpl implements RutaService {
         tramo.setPatenteCamionAsignado(camionValidado.getPatente());
         tramo.setEstadoTramo(buscarEstadoTramo(EstadosTramo.ASIGNADO));
 
-        return tramoRepository.save(tramo);
+        Tramo tramoGuardado = tramoRepository.save(tramo);
+
+        // Notificar a ms-solicitudes que el camión ha sido asignado
+        try {
+            notificarEstadoContenedor(tramo.getRuta().getIdSolicitud(), "ASIGNADO");
+        } catch (Exception e) {
+            System.err.println("Error notificando asignación de camión a ms-solicitudes: " + e.getMessage());
+        }
+
+        return tramoGuardado;
     }
 
     @Override
@@ -118,7 +127,16 @@ public class RutaServiceImpl implements RutaService {
         tramo.setFechaHoraInicio(LocalDateTime.now());
         tramo.setEstadoTramo(buscarEstadoTramo(EstadosTramo.INICIADO));
 
-        return tramoRepository.save(tramo);
+        Tramo tramoGuardado = tramoRepository.save(tramo);
+
+        // Notificar a ms-solicitudes que el tramo ha sido iniciado
+        try {
+            notificarEstadoContenedor(tramo.getRuta().getIdSolicitud(), "INICIADO");
+        } catch (Exception e) {
+            System.err.println("Error notificando inicio de tramo a ms-solicitudes: " + e.getMessage());
+        }
+
+        return tramoGuardado;
     }
 
     @Override
@@ -140,12 +158,11 @@ public class RutaServiceImpl implements RutaService {
 
         Tramo tramoGuardado = tramoRepository.save(tramo);
 
-        // NUEVO: Notificar a ms-solicitudes que el contenedor ha sido entregado
+        // Notificar a ms-solicitudes que el contenedor ha sido finalizado
         try {
-            notificarSolicitudEstadoContenedor(tramo.getRuta().getIdSolicitud(), "ENTREGADA");
+            notificarEstadoContenedor(tramo.getRuta().getIdSolicitud(), "FINALIZADO");
         } catch (Exception e) {
-            System.err.println("Error notificando a ms-solicitudes: " + e.getMessage());
-            // No re-lanzamos la excepción para no afectar la finalización del tramo
+            System.err.println("Error notificando finalización de tramo a ms-solicitudes: " + e.getMessage());
         }
 
         return tramoGuardado;
@@ -559,24 +576,28 @@ public class RutaServiceImpl implements RutaService {
     }
 
     /**
-     * Notifica a ms-solicitudes que el estado del contenedor ha cambiado
+     * Notifica a ms-solicitudes que el estado del contenedor ha cambiado.
+     * Envia un JSON con la estructura requerida por el endpoint actualizar estado.
      */
-    private void notificarSolicitudEstadoContenedor(Long idSolicitud, String nuevoEstado) {
+    private void notificarEstadoContenedor(Long idContenedor, String estado) {
         try {
-            // Llamar al endpoint de ms-solicitudes para actualizar estado del contenedor
-            String url = "http://ms-solicitudes:8081/solicitudes/contenedores/" + idSolicitud + "/estado";
+            String url = "http://ms-solicitudes:8081/solicitudes/contenedores/" + idContenedor + "/estado";
+            
+            // Enviar JSON con formato esperado por ms-solicitudes
+            String payload = "{\"estado\": \"" + estado + "\"}";
             
             webClientBuilder.build()
                     .put()
                     .uri(url)
-                    .bodyValue("{\"estado\": \"" + nuevoEstado + "\"}")
+                    .header("Content-Type", "application/json")
+                    .bodyValue(payload)
                     .retrieve()
                     .bodyToMono(Void.class)
                     .block(Duration.ofSeconds(5));
             
-            System.out.println("Notificación enviada a ms-solicitudes: idSolicitud=" + idSolicitud + ", estado=" + nuevoEstado);
+            System.out.println("Estado actualizado en ms-solicitudes: contenedor=" + idContenedor + ", estado=" + estado);
         } catch (Exception e) {
-            System.err.println("Error notificando a ms-solicitudes sobre estado de contenedor: " + e.getMessage());
+            System.err.println("Error al notificar estado a ms-solicitudes: " + e.getMessage());
         }
     }
 

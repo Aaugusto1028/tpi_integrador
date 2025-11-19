@@ -190,8 +190,8 @@ public class SolicitudController {
      * @return ResponseEntity vacía.
      */
     @PutMapping("/contenedores/{idContenedor}/estado")
-    @PreAuthorize("hasAnyAuthority('OPERADOR', 'TRANSPORTISTA')")
-    @Operation(summary = "Actualizar estado de contenedor (interno)", description = "Endpoint interno para que otros servicios actualicen el estado de un contenedor")
+    @PreAuthorize("permitAll()")
+    @Operation(summary = "Actualizar estado de contenedor (inter-servicio)", description = "Endpoint para que otros microservicios (como ms-rutas) actualicen el estado de un contenedor")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Estado del contenedor actualizado exitosamente"),
         @ApiResponse(responseCode = "403", description = "No autorizado"),
