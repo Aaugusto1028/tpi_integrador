@@ -25,6 +25,7 @@ public class SecurityConfig {
                         .requestMatchers("/rutas/tarifas").permitAll()
                         .requestMatchers("/rutas/distancia").permitAll()
                         .requestMatchers("/rutas/solicitud/*/costo-real").permitAll()
+                        .requestMatchers("/rutas/tiempo-real/*").permitAll()
                         .requestMatchers("/rutas/patente/*/tramos").permitAll()
                         .requestMatchers("/rutas/publico/**").permitAll()
                         // Resto requieren autenticación

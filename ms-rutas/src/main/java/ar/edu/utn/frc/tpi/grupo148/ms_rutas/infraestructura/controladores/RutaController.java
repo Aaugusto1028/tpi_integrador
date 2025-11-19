@@ -5,6 +5,7 @@ import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.CrearRutaRequest;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.TarifaDTO;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.CostoTrasladoDTO;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.TramoDTO;
+import ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.RutaDTO;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.dominio.Ruta;
 import ar.edu.utn.frc.tpi.grupo148.ms_rutas.repositorios.RutaRepository;
 import org.springframework.data.domain.Page;
@@ -119,9 +120,9 @@ public class RutaController {
      */
     @GetMapping("/solicitud/{idSolicitud}")
     @PreAuthorize("hasAuthority('OPERADOR')")
-    @Operation(summary = "Obtener rutas por solicitud (Rutas Alternativas)", description = "Obtiene todas las rutas (alternativas) asociadas a una solicitud específica, con todos sus tramos y costos/tiempos estimados")
+    @Operation(summary = "Obtener rutas por solicitud", description = "Obtiene todas las rutas asociadas a una solicitud específica")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Rutas obtenidas exitosamente con detalles completos"),
+        @ApiResponse(responseCode = "200", description = "Rutas obtenidas exitosamente"),
         @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
         @ApiResponse(responseCode = "204", description = "No hay rutas para esta solicitud")
     })
@@ -130,11 +131,11 @@ public class RutaController {
             if (idSolicitud == null || idSolicitud <= 0) {
                 return ResponseEntity.badRequest().body("ID de solicitud inválido");
             }
-            List<ar.edu.utn.frc.tpi.grupo148.ms_rutas.aplicacion.dto.RutaDTO> rutasDTO = rutaService.obtenerRutasConDetallesPorSolicitud(idSolicitud);
-            if (rutasDTO == null || rutasDTO.isEmpty()) {
+            java.util.List<Ruta> rutas = rutaRepository.findByIdSolicitud(idSolicitud);
+            if (rutas == null || rutas.isEmpty()) {
                 return ResponseEntity.noContent().build();
             }
-            return ResponseEntity.ok(rutasDTO);
+            return ResponseEntity.ok(rutas);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener rutas: " + e.getMessage());
         }
@@ -268,6 +269,25 @@ public class RutaController {
     }
 
     /**
+     * Endpoint público para que ms-solicitudes obtenga el tiempo real (en HORAS) de una solicitud.
+     */
+    @GetMapping("/tiempo-real/{idSolicitud}")
+    @PreAuthorize("permitAll()")
+    @Operation(summary = "Obtener tiempo real de un traslado", description = "Obtiene el tiempo real (en HORAS) que tomó completar una solicitud, calculado a partir de las fechas de inicio/fin de los tramos")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Tiempo obtenido exitosamente"),
+        @ApiResponse(responseCode = "502", description = "Error al calcular el tiempo")
+    })
+    public ResponseEntity<java.util.Map<String, Double>> obtenerTiempoRealPorSolicitud(@PathVariable Long idSolicitud) {
+        try {
+            Double tiempoRealHoras = rutaService.obtenerTiempoRealPorSolicitud(idSolicitud);
+            return ResponseEntity.ok(java.util.Collections.singletonMap("tiempoRealHoras", tiempoRealHoras));
+        } catch (Exception e) {
+            return ResponseEntity.status(502).body(null);
+        }
+    }
+
+    /**
      * Endpoint público para que ms-solicitudes obtenga la tarifa vigente.
      */
     @GetMapping("/tarifas")
@@ -354,4 +374,31 @@ public class RutaController {
                 });
     }
     // --- FIN DE ENDPOINT AÑADIDO ---
+
+    /**
+     * Endpoint para elegir una ruta y descartar todas las demás de la misma solicitud.
+     * Solo accesible por OPERADOR.
+     */
+    @PostMapping("/{idRuta}/elegir")
+    @PreAuthorize("hasAuthority('OPERADOR')")
+    @Operation(summary = "Elegir una ruta", description = "Elige una ruta entre varias alternativas y descarta las demás")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Ruta elegida exitosamente"),
+        @ApiResponse(responseCode = "403", description = "No autorizado (Requiere rol OPERADOR)"),
+        @ApiResponse(responseCode = "404", description = "Ruta no encontrada"),
+        @ApiResponse(responseCode = "400", description = "Error al elegir la ruta")
+    })
+    public ResponseEntity<?> elegirRuta(@PathVariable Long idRuta) {
+        try {
+            if (idRuta == null || idRuta <= 0) {
+                return ResponseEntity.badRequest().body("ID de ruta inválido");
+            }
+            var rutaDTO = rutaService.elegirRuta(idRuta);
+            return ResponseEntity.ok(rutaDTO);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body("Error: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al elegir ruta: " + e.getMessage());
+        }
+    }
 }

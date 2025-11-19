@@ -231,12 +231,31 @@
 					}
 				},
 				{
-					"name": "(5) RUTAS ALTERNATIVAS: Asignar Ruta Elegida [OPERADOR]",
+					"name": "(5) RUTAS ALTERNATIVAS: Elegir Ruta [OPERADOR]",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData && jsonData.tramos && jsonData.tramos.length > 0) {",
+									"    pm.collectionVariables.set(\"id_tramo\", jsonData.tramos[0].id);",
+									"    console.log(\"Primer tramo ID: \" + jsonData.tramos[0].id);",
+									"    if (jsonData.tramos.length > 1) {",
+									"        console.log(\"NOTA: Esta ruta tiene \" + jsonData.tramos.length + \" tramos. Se asignará solo el primero en este flujo.\");",
+									"    }",
+									"}",
+									"console.log(\"Ruta elegida. Rutas alternativas descartadas.\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_operador}}", "type": "string" }] },
 						"method": "POST",
 						"header": [],
-						"url": { "raw": "{{baseUrl}}/rutas/{{id_ruta_1}}/asignar", "host": ["{{baseUrl}}"], "path": ["rutas", "{{id_ruta_1}}", "asignar"] }
+						"url": { "raw": "{{baseUrl}}/rutas/{{id_ruta_1}}/elegir", "host": ["{{baseUrl}}"], "path": ["rutas", "{{id_ruta_1}}", "elegir"] }
 					}
 				},
 				{
@@ -287,7 +306,7 @@
 						"header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"costoFinal\": 15000.00,\n    \"tiempoReal\": 48.5\n}"
+							"raw": "{}"
 						},
 						"url": { "raw": "{{baseUrl}}/solicitudes/{{id_solicitud}}/finalizar", "host": ["{{baseUrl}}"], "path": ["solicitudes", "{{id_solicitud}}", "finalizar"] }
 					}

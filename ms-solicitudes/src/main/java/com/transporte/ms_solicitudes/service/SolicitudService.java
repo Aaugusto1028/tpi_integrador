@@ -155,8 +155,8 @@ public class SolicitudService {
 
     /**
      * Finaliza una solicitud.
-     * Intenta obtener el costo real desde ms-rutas usando el idSolicitud.
-     * Si falla, usa el costoFinal del DTO.
+     * Obtiene automáticamente el costo real y el tiempo real desde ms-rutas.
+     * El tiempoReal se calcula basándose en las fechas de inicio/fin de los tramos (en HORAS).
      */
     @Transactional
     public SolicitudResponseDTO finalizarSolicitud(Long id, FinalizarSolicitudDTO dto) {
@@ -169,34 +169,45 @@ public class SolicitudService {
 
         solicitud.setEstado("ENTREGADA");
         
-        // Determinar el costo final: usar el costoEstimado como costoFinal si no se proporciona uno calculado
+        // Determinar el costo final: SIEMPRE intentar obtener el costo real de ms-rutas primero
         BigDecimal costoFinal = BigDecimal.ZERO;
         
-        // Si el cliente envía un costoFinal válido (mayor a 0), usarlo
-        if (dto.getCostoFinal() != null && dto.getCostoFinal().signum() > 0) {
-            costoFinal = dto.getCostoFinal();
-        } else {
-            // Si no se envía, intentar obtener del costo estimado de la solicitud
+        try {
+            // Intentar obtener el costo real de ms-rutas (basado en tramos completados)
+            CostoTrasladoDTO costoTraslado = rutasWebClient.obtenerCostoTrasladoRealPorSolicitud(id);
+            if (costoTraslado != null && costoTraslado.getCostoTotal() != null && costoTraslado.getCostoTotal().signum() > 0) {
+                costoFinal = costoTraslado.getCostoTotal();
+                logger.info("Costo final obtenido de ms-rutas para solicitud {}: {}", id, costoFinal);
+            }
+        } catch (Exception e) {
+            logger.warn("No se pudo obtener costo real de ms-rutas para idSolicitud={}: {}. Usando costoEstimado.", id, e.getMessage());
+            // Si falla, usar el costo estimado
             if (solicitud.getCostoEstimado() != null && solicitud.getCostoEstimado().signum() > 0) {
                 costoFinal = solicitud.getCostoEstimado();
                 logger.info("Usando costoEstimado como costoFinal para solicitud {}: {}", id, costoFinal);
-            } else {
-                // Como último recurso, intentar obtener de ms-rutas
-                try {
-                    CostoTrasladoDTO costoTraslado = rutasWebClient.obtenerCostoTrasladoRealPorSolicitud(id);
-                    if (costoTraslado != null && costoTraslado.getCostoTotal() != null) {
-                        costoFinal = costoTraslado.getCostoTotal();
-                        logger.info("Costo final obtenido de ms-rutas para solicitud {}: {}", id, costoFinal);
-                    }
-                } catch (Exception e) {
-                    logger.warn("No se pudo obtener costo real de ms-rutas para idSolicitud={}: {}", id, e.getMessage());
-                    // Si todo falla, dejar costoFinal en ZERO (ya está asignado)
-                }
             }
         }
         
         solicitud.setCostoFinal(costoFinal);
-        solicitud.setTiempoReal(dto.getTiempoReal());
+        
+        // Obtener el tiempo real desde ms-rutas (en HORAS, basado en fechas de tramos)
+        BigDecimal tiempoReal = BigDecimal.ZERO;
+        try {
+            Double tiempoRealHoras = rutasWebClient.obtenerTiempoRealPorSolicitud(id);
+            if (tiempoRealHoras != null && tiempoRealHoras > 0) {
+                tiempoReal = java.math.BigDecimal.valueOf(tiempoRealHoras);
+                logger.info("Tiempo real obtenido de ms-rutas para solicitud {} (en horas): {}", id, tiempoReal);
+            }
+        } catch (Exception e) {
+            logger.warn("No se pudo obtener tiempo real de ms-rutas para idSolicitud={}. Usando valor del DTO o 0.", id);
+            // Si falla, usar el valor del DTO si está disponible
+            if (dto.getTiempoReal() != null && dto.getTiempoReal().signum() > 0) {
+                tiempoReal = dto.getTiempoReal();
+                logger.info("Usando tiempoReal del DTO para solicitud {}: {}", id, tiempoReal);
+            }
+        }
+        
+        solicitud.setTiempoReal(tiempoReal);
 
         // Registramos el estado final en el historial del contenedor
         actualizarEstadoContenedor(solicitud.getContenedor().getId(), "ENTREGADA");

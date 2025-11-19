@@ -158,16 +158,15 @@ public class SolicitudController {
             if (id == null || id <= 0) {
                 return ResponseEntity.badRequest().body("ID de solicitud inválido");
             }
-            if (dto == null || dto.getCostoFinal() == null) {
-                return ResponseEntity.badRequest().body("Costo final es obligatorio");
+            if (dto == null) {
+                return ResponseEntity.badRequest().body("Cuerpo de la solicitud no puede estar vacío");
             }
-            if (dto.getCostoFinal().signum() < 0) {
+            // Nota: costoFinal y tiempoReal ahora se calculan automáticamente desde ms-rutas
+            // Estos campos en el DTO son opcionales y se usan como fallback si falla la llamada a ms-rutas
+            if (dto.getCostoFinal() != null && dto.getCostoFinal().signum() < 0) {
                 return ResponseEntity.badRequest().body("Costo final no puede ser negativo");
             }
-            if (dto.getTiempoReal() == null) {
-                return ResponseEntity.badRequest().body("Tiempo real es obligatorio");
-            }
-            if (dto.getTiempoReal().signum() < 0) {
+            if (dto.getTiempoReal() != null && dto.getTiempoReal().signum() < 0) {
                 return ResponseEntity.badRequest().body("Tiempo real no puede ser negativo");
             }
             

@@ -43,4 +43,10 @@ public interface RutaService {
 
     // Método para obtener todas las rutas de una solicitud con sus tramos y detalles completos
     List<RutaDTO> obtenerRutasConDetallesPorSolicitud(Long idSolicitud);
+
+    // Obtener tiempo real (en HORAS) de una solicitud basándose en fechas de tramos
+    Double obtenerTiempoRealPorSolicitud(Long idSolicitud);
+
+    // Elegir una ruta y descartar todas las demás de la misma solicitud
+    RutaDTO elegirRuta(Long idRuta);
 }

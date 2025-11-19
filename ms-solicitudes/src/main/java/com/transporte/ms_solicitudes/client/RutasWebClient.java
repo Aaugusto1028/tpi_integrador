@@ -86,4 +86,32 @@ public class RutasWebClient {
                 .bodyToMono(CostoTrasladoDTO.class)
                 .block();
     }
+
+    /**
+     * Obtiene el tiempo real (en HORAS) que tomó completar una solicitud.
+     * Se calcula basándose en las fechas de inicio y fin de los tramos.
+     * @param idSolicitud ID de la solicitud
+     * @return Double con el tiempo real en horas
+     */
+    public Double obtenerTiempoRealPorSolicitud(Long idSolicitud) {
+        try {
+            logger.info("Llamando a ms-rutas/tiempo-real/{} para obtener tiempo real", idSolicitud);
+            java.util.Map<String, Double> respuesta = webClient.get()
+                    .uri(MS_RUTAS_URL + "/tiempo-real/{idSolicitud}", idSolicitud)
+                    .retrieve()
+                    .bodyToMono(new org.springframework.core.ParameterizedTypeReference<java.util.Map<String, Double>>() {})
+                    .block();
+            
+            if (respuesta != null && respuesta.containsKey("tiempoRealHoras")) {
+                Double tiempoReal = respuesta.get("tiempoRealHoras");
+                logger.info("Tiempo real obtenido para solicitud {}: {} horas", idSolicitud, tiempoReal);
+                return tiempoReal;
+            }
+            logger.warn("No se obtuvo tiempoRealHoras en la respuesta de ms-rutas para solicitud {}", idSolicitud);
+            return 0.0;
+        } catch (Exception e) {
+            logger.error("Error al obtener tiempo real desde ms-rutas para solicitud {}: {}", idSolicitud, e.getMessage(), e);
+            return 0.0;
+        }
+    }
 }

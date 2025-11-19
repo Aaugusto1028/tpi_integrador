@@ -20,9 +20,13 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class RutaServiceImpl implements RutaService {
+
+    private static final Logger logger = LoggerFactory.getLogger(RutaServiceImpl.class);
 
     // --- Constantes para IDs de Estados (¡No más "Magic Numbers"!) ---
     private static final class EstadosTramo {
@@ -694,5 +698,66 @@ public class RutaServiceImpl implements RutaService {
         rutaDTO.setTiempoEstimadoTotal(tiempoTotalEstimado);
 
         return rutaDTO;
+    }
+
+    /**
+     * Calcula el tiempo real (en HORAS) que tomó completar todos los tramos de una solicitud.
+     * Se basa en las fechas de inicio y fin de cada tramo.
+     * @param idSolicitud ID de la solicitud
+     * @return Double con el tiempo real en horas (ej: 24.5 horas)
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Double obtenerTiempoRealPorSolicitud(Long idSolicitud) {
+        List<Ruta> rutas = rutaRepository.findByIdSolicitud(idSolicitud);
+        if (rutas == null || rutas.isEmpty()) {
+            return 0.0;
+        }
+
+        Ruta ruta = rutas.get(0);
+        List<Tramo> tramos = ruta.getTramos();
+        if (tramos == null || tramos.isEmpty()) {
+            return 0.0;
+        }
+
+        double tiempoTotalHoras = 0.0;
+        
+        for (Tramo tramo : tramos) {
+            if (tramo.getFechaHoraInicio() != null && tramo.getFechaHoraFin() != null) {
+                Duration duracion = Duration.between(tramo.getFechaHoraInicio(), tramo.getFechaHoraFin());
+                double horas = duracion.toMillis() / (1000.0 * 60 * 60);
+                tiempoTotalHoras += horas;
+            }
+        }
+
+        return tiempoTotalHoras;
+    }
+
+    /**
+     * Elige una ruta y descarta todas las demás de la misma solicitud.
+     * @param idRuta ID de la ruta a elegir
+     * @return RutaDTO de la ruta elegida
+     */
+    @Transactional
+    public RutaDTO elegirRuta(Long idRuta) {
+        Ruta rutaElegida = rutaRepository.findById(idRuta)
+                .orElseThrow(() -> new IllegalArgumentException("Ruta no encontrada: " + idRuta));
+
+        Long idSolicitud = rutaElegida.getIdSolicitud();
+        
+        // Obtener todas las rutas de la misma solicitud
+        List<Ruta> todasLasRutas = rutaRepository.findByIdSolicitud(idSolicitud);
+        
+        // Eliminar todas EXCEPTO la elegida
+        for (Ruta ruta : todasLasRutas) {
+            if (!ruta.getId().equals(idRuta)) {
+                logger.info("Eliminando ruta alternativa {} de solicitud {}", ruta.getId(), idSolicitud);
+                rutaRepository.delete(ruta);
+            }
+        }
+
+        logger.info("Ruta {} elegida para solicitud {}. Rutas alternativas eliminadas.", idRuta, idSolicitud);
+        
+        return obtenerRutaConDetalles(idRuta);
     }
 }
