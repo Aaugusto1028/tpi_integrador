@@ -89,45 +89,58 @@ public class CamionService {
                 .block(); // Bloquea la ejecución hasta obtener el resultado (API síncrona)
     }
 
-            /**
+/**
              * Calcula y devuelve los promedios (costo y consumo por km) entre los camiones
              * disponibles que cumplen con la capacidad mínima requerida.
-             * @param pesoRequerido peso mínimo requerido
-             * @param volumenRequerido volumen mínimo requerido
-             * @return PromediosDTO con los valores (BigDecimal). Si no hay camiones aptos, devuelve ceros.
+             * APLICA NORMALIZACIÓN DE CONSUMO: Si detecta valores > 1, los trata como km/litro.
              */
             public PromediosDTO obtenerPromedios(Double pesoRequerido, Double volumenRequerido) {
-            List<Camion> disponibles = repository.findByDisponibilidad(true);
+                // 1. Buscar disponibles
+                List<Camion> disponibles = repository.findByDisponibilidad(true);
 
-            List<Camion> aptos = disponibles.stream()
-                .filter(c -> c.getCapacidadPeso() != null && c.getCapacidadPeso() >= pesoRequerido)
-                .filter(c -> c.getCapacidadVolumen() != null && c.getCapacidadVolumen() >= volumenRequerido)
-                .collect(Collectors.toList());
+                // 2. Filtrar aptos por peso y volumen
+                List<Camion> aptos = disponibles.stream()
+                    .filter(c -> c.getCapacidadPeso() != null && c.getCapacidadPeso() >= pesoRequerido)
+                    .filter(c -> c.getCapacidadVolumen() != null && c.getCapacidadVolumen() >= volumenRequerido)
+                    .collect(Collectors.toList());
 
-            if (aptos.isEmpty()) {
-                return new PromediosDTO(java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO);
+                if (aptos.isEmpty()) {
+                    return new PromediosDTO(java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO);
+                }
+
+                java.math.BigDecimal count = java.math.BigDecimal.valueOf(aptos.size());
+
+                // 3. Calcular Suma de Costos (Igual que antes)
+                java.math.BigDecimal sumaCosto = aptos.stream()
+                    .map(Camion::getCostoPorKm)
+                    .filter(java.util.Objects::nonNull)
+                    .map(java.math.BigDecimal::valueOf)
+                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
+                // 4. Calcular Suma de Consumo (CON LÓGICA DE CORRECCIÓN)
+                java.math.BigDecimal sumaConsumo = aptos.stream()
+                    .map(Camion::getConsumoCombustibleKm)
+                    .filter(java.util.Objects::nonNull)
+                    .map(consumo -> {
+                        // --- AQUÍ ESTÁ LA MAGIA ---
+                        if (consumo > 1.0) {
+                            // Si el número es mayor a 1 (ej: 8, 10, 12), asumimos que es "km por litro"
+                            // Lo invertimos para obtener "litros por km" (ej: 1/8 = 0.125)
+                            return 1.0 / consumo;
+                        } else {
+                            // Si es menor o igual a 1 (ej: 0.15), asumimos que ya es "litros por km"
+                            return consumo;
+                        }
+                    })
+                    .map(java.math.BigDecimal::valueOf)
+                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
+                // 5. Calcular Promedios finales
+                java.math.BigDecimal promedioCosto = sumaCosto.divide(count, 6, java.math.RoundingMode.HALF_UP);
+                java.math.BigDecimal promedioConsumo = sumaConsumo.divide(count, 6, java.math.RoundingMode.HALF_UP);
+
+                return new PromediosDTO(promedioCosto, promedioConsumo);
             }
-
-            java.math.BigDecimal sumaCosto = aptos.stream()
-                .map(Camion::getCostoPorKm)
-                .filter(java.util.Objects::nonNull)
-                .map(d -> java.math.BigDecimal.valueOf(d))
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-
-            java.math.BigDecimal sumaConsumo = aptos.stream()
-                .map(Camion::getConsumoCombustibleKm)
-                .filter(java.util.Objects::nonNull)
-                .map(d -> java.math.BigDecimal.valueOf(d))
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-
-            java.math.BigDecimal count = java.math.BigDecimal.valueOf(aptos.size());
-
-            java.math.BigDecimal promedioCosto = sumaCosto.divide(count, 6, java.math.RoundingMode.HALF_UP);
-            java.math.BigDecimal promedioConsumo = sumaConsumo.divide(count, 6, java.math.RoundingMode.HALF_UP);
-
-            return new PromediosDTO(promedioCosto, promedioConsumo);
-            }
-
             /**
              * Obtiene los datos detallados de un camión específico (por patente).
              * Usado por ms-rutas para calcular costos reales de traslados.

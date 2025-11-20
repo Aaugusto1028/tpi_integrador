@@ -1,315 +1,112 @@
--- ...existing code...
--- Script robusto para insertar datos iniciales detectando columnas dinámicamente.
--- Inserciones directas (estas ya funcionaban)
+-- ==================================================================================
+-- SCRIPT DE DATOS INICIALES - TPI LOGÍSTICA (VERSIÓN FINAL)
+-- ==================================================================================
+
+-- 1. ESTADOS DE TRAMO
 INSERT INTO estado_tramo (id_estado_tramo, nombre) VALUES
- (1, 'ESTIMADO'), (2, 'ASIGNADO'), (3, 'INICIADO'), (4, 'FINALIZADO')
+ (1, 'ESTIMADO'), 
+ (2, 'ASIGNADO'), 
+ (3, 'INICIADO'), 
+ (4, 'FINALIZADO')
 ON CONFLICT (id_estado_tramo) DO NOTHING;
 
--- Camiones de ejemplo (ajustar columnas si su esquema difiere)
-INSERT INTO camiones (patente, nombre_transportista, capacidad_peso, capacidad_volumen, consumo_combustible_km, costo_por_km, disponibilidad)
-VALUES ('ABC123', 'Juan Pérez', 25000, 80, 8.5, 150.00, true)
-ON CONFLICT DO NOTHING;
-
--- Clientes de ejemplo
-INSERT INTO clientes (dni, nombre, apellido, email, telefono)
-VALUES ('12345678','Cliente','Test','cliente@test.com','+54 9 351 1111111')
-ON CONFLICT DO NOTHING;
-
--- --------------------------------------------------------------------------------
--- Tipo de tramo: detecta columna de texto y hace insert según nombre real
--- (SE ELIMINA/COMENTA ESTE BLOQUE DINÁMICO YA QUE CONFLICTÚA CON EL INSERT EXPLÍCITO)
--- --------------------------------------------------------------------------------
-/*
-DO $$
-DECLARE
-  txt_col text;
-  id_col text;
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tipo_tramo') THEN
-    RAISE NOTICE 'Table tipo_tramo not found, skipping tipo_tramo inserts';
-    RETURN;
-  END IF;
-
-  -- buscar columna id típica
-  SELECT column_name INTO id_col
-    FROM information_schema.columns
-   WHERE table_name='tipo_tramo' AND (column_name ILIKE 'id_%' OR column_name = 'id')
-   ORDER BY ordinal_position LIMIT 1;
-
-  -- buscar una columna de texto para el nombre/descripcion
-  SELECT column_name INTO txt_col
-    FROM information_schema.columns
-   WHERE table_name='tipo_tramo' AND data_type IN ('character varying','text')
-     AND column_name NOT ILIKE '%id%'
-   ORDER BY ordinal_position LIMIT 1;
-
-  IF txt_col IS NULL THEN
-    RAISE NOTICE 'No text column found in tipo_tramo, skipping inserts';
-    RETURN;
-  END IF;
-
-  -- usar id_col si existe, sino insertar solo la columna texto (sin id)
-  IF id_col IS NOT NULL THEN
-    EXECUTE format($f$
-      INSERT INTO tipo_tramo (%I, %I) VALUES
-        (1, %L), (2, %L), (3, %L), (4, %L)
-      ON CONFLICT (%I) DO NOTHING
-    $f$, id_col, txt_col, 'ESTIMADO','ASIGNADO','INICIADO','FINALIZADO', id_col);
-  ELSE
-    EXECUTE format($f$
-      INSERT INTO tipo_tramo (%I) VALUES
-        (%L), (%L), (%L), (%L)
-    $f$, txt_col, 'ESTIMADO','ASIGNADO','INICIADO','FINALIZADO');
-  END IF;
-END$$;
-*/
-
--- --------------------------------------------------------------------------------
--- Depositos: detectar columnas (id, nombre/text, lat, lon, precio/costo)
--- (SE ELIMINA/COMENTA ESTE BLOQUE DINÁMICO YA QUE INSERTA DATOS INCOMPLETOS Y CORRUPTOS)
--- --------------------------------------------------------------------------------
-/*
-DO $$
-DECLARE
-  t text := 'depositos';
-  idc text;
-  namec text;
-  latc text;
-  lonc text;
-  pricec text;
-  col record;
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = t) THEN
-    RAISE NOTICE 'Table % not found, skipping depositos inserts', t;
-    RETURN;
-  END IF;
-
-  -- id candidate
-  SELECT column_name INTO idc FROM information_schema.columns
-   WHERE table_name=t AND (column_name ILIKE 'id_%' OR column_name='id')
-   ORDER BY ordinal_position LIMIT 1;
-
-  -- name/text candidate
-  SELECT column_name INTO namec FROM information_schema.columns
-   WHERE table_name=t AND data_type IN ('character varying','text')
-     AND column_name NOT ILIKE '%id%' ORDER BY ordinal_position LIMIT 1;
-
-  -- lat / lon candidates
-  SELECT column_name INTO latc FROM information_schema.columns
-   WHERE table_name=t AND (column_name ILIKE '%lat%' OR column_name ILIKE '%latitude%')
-   ORDER BY ordinal_position LIMIT 1;
-
-  SELECT column_name INTO lonc FROM information_schema.columns
-   WHERE table_name=t AND (column_name ILIKE '%lon%' OR column_name ILIKE '%lng%' OR column_name ILIKE '%longitude%')
-   ORDER BY ordinal_position LIMIT 1;
-
-  -- price candidate: prefer names with estadio/estadia/costo/precio
-  SELECT column_name INTO pricec FROM information_schema.columns
-   WHERE table_name=t AND data_type IN ('numeric','double precision','real','integer','numeric')
-     AND (column_name ILIKE '%estadi%' OR column_name ILIKE '%estadio%' OR column_name ILIKE '%costo%' OR column_name ILIKE '%precio%')
-   ORDER BY ordinal_position LIMIT 1;
-
-  -- fallback: any numeric column different from lat/lon/id
-  IF pricec IS NULL THEN
-    SELECT column_name INTO pricec FROM information_schema.columns
-     WHERE table_name=t AND data_type IN ('numeric','double precision','real','integer')
-       AND column_name NOT IN (COALESCE(latc,''), COALESCE(lonc,''), COALESCE(idc,''))
-     ORDER BY ordinal_position LIMIT 1;
-  END IF;
-
-  IF namec IS NULL THEN
-    RAISE NOTICE 'No text column found in depositos, skipping deposit insert';
-    RETURN;
-  END IF;
-
-  -- Construir dynamically la sentencia
-  IF idc IS NOT NULL AND latc IS NOT NULL AND lonc IS NOT NULL AND pricec IS NOT NULL THEN
-    EXECUTE format($q$
-      INSERT INTO depositos (%I, %I, %I, %I, %I)
-      VALUES (1, %L, %L, %L, %L)
-      ON CONFLICT (%I) DO NOTHING
-    $q$, idc, namec, latc, lonc, pricec,
-         'Depósito Córdoba', '-31.4201', '-64.1888', '500.00', idc);
-  ELSIF latc IS NOT NULL AND lonc IS NOT NULL AND pricec IS NOT NULL THEN
-    -- sin id
-    EXECUTE format($q$
-      INSERT INTO depositos (%I, %I, %I, %I)
-      VALUES (%L, %L, %L, %L)
-    $q$, namec, latc, lonc, pricec,
-         'Depósito Córdoba', '-31.4201', '-64.1888', '500.00');
-  ELSE
-    RAISE NOTICE 'depositos table present but required columns not found (lat/lon/price). Skipping.';
-  END IF;
-END$$;
-*/
-
--- --------------------------------------------------------------------------------
--- Tarifas: detectar columnas y hacer INSERT
--- --------------------------------------------------------------------------------
-DO $$
-DECLARE
-  t text := 'tarifas';
-  idc text;
-  pricec text;
-  stayc text;
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = t) THEN
-    RAISE NOTICE 'Table % not found, skipping tarifas inserts', t;
-    RETURN;
-  END IF;
-
-  SELECT column_name INTO idc FROM information_schema.columns
-   WHERE table_name=t AND (column_name ILIKE 'id_%' OR column_name = 'id')
-   ORDER BY ordinal_position LIMIT 1;
-
-  -- columnas numéricas: buscar precio_litro y costo_estadia_diario o parecidas
-  SELECT column_name INTO pricec FROM information_schema.columns
-   WHERE table_name=t AND data_type IN ('numeric','double precision','real','integer')
-     AND (column_name ILIKE '%precio%' OR column_name ILIKE '%litro%' OR column_name ILIKE '%precio_litro%')
-   ORDER BY ordinal_position LIMIT 1;
-
-  SELECT column_name INTO stayc FROM information_schema.columns
-   WHERE table_name=t AND data_type IN ('numeric','double precision','real','integer')
-     AND (column_name ILIKE '%estadi%' OR column_name ILIKE '%estadio%' OR column_name ILIKE '%costo%')
-   ORDER BY ordinal_position LIMIT 1;
-
-  -- Fallbacks
-  IF pricec IS NULL THEN
-    SELECT column_name INTO pricec FROM information_schema.columns
-     WHERE table_name=t AND data_type IN ('numeric','double precision','real','integer')
-     ORDER BY ordinal_position LIMIT 1;
-  END IF;
-
-  IF stayc IS NULL THEN
-    -- buscar otra numeric distinta de pricec
-    SELECT column_name INTO stayc FROM information_schema.columns
-     WHERE table_name=t AND data_type IN ('numeric','double precision','real','integer')
-       AND column_name <> COALESCE(pricec,'')
-     ORDER BY ordinal_position LIMIT 1;
-  END IF;
-
-  IF pricec IS NULL THEN
-    RAISE NOTICE 'No numeric column found in tarifas, skipping';
-    RETURN;
-  END IF;
-
-  IF idc IS NOT NULL AND stayc IS NOT NULL THEN
-    EXECUTE format($f$
-      INSERT INTO tarifas (%I, %I, %I) VALUES
-       (1, %L, %L)
-      ON CONFLICT (%I) DO NOTHING
-    $f$, idc, pricec, stayc, '150.00', '500.00', idc);
-  ELSIF idc IS NOT NULL THEN
-    EXECUTE format($f$
-      INSERT INTO tarifas (%I, %I) VALUES
-       (1, %L)
-      ON CONFLICT (%I) DO NOTHING
-    $f$, idc, pricec, '150.00', idc);
-  ELSE
-    EXECUTE format($f$
-      INSERT INTO tarifas (%I, %L) VALUES (%L, %L)
-    $f$, pricec, '150.00', '150.00', '500.00');
-  END IF;
-END$$;
-
--- --------------------------------------------------------------------------------
--- Resumen de verificación (intenta contar si las tablas existen)
--- --------------------------------------------------------------------------------
-SELECT 'Verificación de Datos Iniciales:' as info;
-
-SELECT COUNT(*) FILTER (WHERE true) AS total_camiones FROM (
-  SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-  WHERE c.relname='camiones' LIMIT 1
-) s JOIN LATERAL (SELECT 1) t ON true;
-
--- Conteos seguros (si las tablas existen)
-SELECT (CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='depositos') THEN
-         (SELECT COUNT(*) FROM depositos) ELSE 0 END) AS total_depositos;
-
-SELECT (CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='estado_tramo') THEN
-         (SELECT COUNT(*) FROM estado_tramo) ELSE 0 END) AS total_estado_tramo;
-
-SELECT (CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='tipo_tramo') THEN
-         (SELECT COUNT(*) FROM tipo_tramo) ELSE 0 END) AS total_tipo_tramo;
-
-SELECT (CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='tarifas') THEN
-         (SELECT COUNT(*) FROM tarifas) ELSE 0 END) AS total_tarifas;
-
--- ...existing code...
-
--- ==================================================================================
--- INSERTS EXPLÍCITOS (compatibles con el esquema actual detectado en la BD)
--- Estas inserciones usan los nombres de columnas reales: depositos(id_deposito,nombre,calle,id_ciudad,latitud,longitud,precio_estadia),
--- tipo_tramo(id_tipo_tramo, descripcion), tarifas(id_tarifa, precio_litro), camiones(...), clientes(...)
--- ==================================================================================
-
--- Tipo de tramo (usa columna 'descripcion')
+-- 2. TIPOS DE TRAMO
 INSERT INTO tipo_tramo (id_tipo_tramo, descripcion) VALUES
   (1, 'TERRESTRE'),
   (2, 'AEREO'),
   (3, 'MARITIMO')
 ON CONFLICT (id_tipo_tramo) DO NOTHING;
 
--- Tarifas (columna precio_litro)
+-- 3. TARIFAS BASE
 INSERT INTO tarifas (id_tarifa, precio_litro) VALUES
   (1, 150.00)
 ON CONFLICT (id_tarifa) DO NOTHING;
 
--- Depósitos: insertar al menos 3 depósitos (1,2,3) que el flujo de pruebas usa
--- columnas: id_deposito, nombre, calle, id_ciudad, latitud, longitud, precio_estadia
--- ...existing code...
--- Depósitos: insertar al menos 3 depósitos (1,2,3) que el flujo de pruebas usa
--- columnas: id_deposito, nombre, calle, id_ciudad, latitud, longitud, precio_estadia
-INSERT INTO depositos (id_deposito, nombre, calle, id_ciudad, latitud, longitud, precio_estadia) VALUES
-  (1, 'Depósito Córdoba', 'Av. Colón 100', 1, -31.4201, -64.1888, 500.00),
-  (2, 'Depósito Mendoza', 'Calle San Martín 200', 2, -32.8908, -68.8272, 450.00),
-  (3, 'Depósito Buenos Aires', 'Av. 9 de Julio 300', 3, -34.6037, -58.3816, 600.00),
-  (4, 'Depósito La Plata', 'Calle 7 #800', 3, -34.9211, -57.9545, 480.00),
-  (5, 'Depósito Rosario', 'Av. Pellegrini 2500', 4, -32.9442, -60.6509, 520.00),
-  (6, 'Depósito Santa Fe', 'Ruta Nacional 9 Km 470', 5, -31.6109, -60.7084, 490.00),
-  (7, 'Depósito Paraná', 'Av. Ramírez 1200', 6, -31.7330, -60.5247, 475.00),
-  (8, 'Depósito Salta', 'Ruta Nacional 9 Km 1234', 7, -24.7859, -65.4107, 550.00),
-  (9, 'Depósito Jujuy', 'Calle Gorriti 450', 8, -24.1856, -65.2995, 530.00),
-  (10, 'Depósito Tucumán', 'Av. Aconquija 3000', 9, -26.8083, -65.2176, 510.00),
-  (11, 'Depósito La Rioja', 'Calle Pelagio Luna 800', 10, -29.4119, -66.8654, 450.00),
-  (12, 'Depósito Catamarca', 'Av. Virgen del Valle 1500', 11, -28.4667, -65.4833, 480.00),
-  (13, 'Depósito San Luis', 'Ruta Nacional 7 Km 320', 12, -33.2950, -66.3356, 470.00),
-  (14, 'Depósito Neuquén', 'Av. Olascoaga 2800', 13, -38.9521, -68.0585, 520.00),
-  (15, 'Depósito Río Negro', 'Ruta Nacional 5 Km 160', 14, -41.1337, -71.3089, 540.00),
-  (16, 'Depósito Chubut', 'Calle Rivadavia 1200', 15, -42.7628, -65.0383, 560.00),
-  (17, 'Depósito Santa Cruz', 'Av. Kirchner 3500', 16, -50.3680, -72.5411, 580.00),
-  (18, 'Depósito Tierra del Fuego', 'Ruta Nacional 3 Km 20', 17, -54.8019, -68.3304, 600.00),
-  (19, 'Depósito Formosa', 'Ruta Nacional 9 Km 1850', 18, -25.5606, -60.9744, 500.00),
-  (20, 'Depósito Misiones', 'Ruta Nacional 12 Km 2340', 19, -27.4305, -55.5019, 510.00),
-  (21, 'Depósito Corrientes', 'Av. Tres de Abril 850', 20, -27.4814, -58.8221, 495.00),
-  (22, 'Depósito Entre Ríos', 'Calle Urquiza 1100', 6, -32.3881, -60.6754, 485.00),
-  (23, 'Depósito Santiago del Estero', 'Av. Libertad 2200', 21, -27.7975, -64.2614, 470.00)
-ON CONFLICT (id_deposito) DO NOTHING;
-
-
--- Camiones adicionales (si no están): asegurar disponibilidad de camiones de prueba
-INSERT INTO camiones (patente, nombre_transportista, telefono_transportista, capacidad_peso, capacidad_volumen, consumo_combustible_km, costo_por_km, disponibilidad)
-VALUES
-  ('ABC123', 'Juan Pérez', '+54 9 351 1234567', 25000, 80, 8.5, 150.00, true),
-  ('XYZ789', 'Carlos López', '+54 9 351 9876543', 20000, 60, 10.0, 140.00, true),
-  ('DEF456', 'María García', '+54 9 351 5555555', 15000, 50, 9.0, 145.00, true)
-ON CONFLICT (patente) DO NOTHING;
-
--- Clientes de prueba (asegurar existencia por dni usado en Postman y pruebas)
+-- 4. CLIENTES DE PRUEBA
 INSERT INTO clientes (dni, nombre, apellido, email, telefono) VALUES
   ('12345678','Cliente','Test','cliente@test.com','+54 9 351 1111111'),
   ('87654321','Cliente2','Prueba','cliente2@test.com','+54 9 351 2222222')
 ON CONFLICT (dni) DO NOTHING;
 
--- Contenedores de prueba asociados a clientes (solo si la tabla y columna de FK existen)
+-- 5. DEPÓSITOS (Red Troncal + Intermedios para evitar tramos > 600km)
+INSERT INTO depositos (id_deposito, nombre, calle, id_ciudad, latitud, longitud, precio_estadia) VALUES
+  -- Zona Centro / Cuyo
+  (1, 'Depósito Córdoba', 'Av. Colón 100', 1, -31.4201, -64.1888, 500.00),
+  (2, 'Depósito Mendoza', 'Calle San Martín 200', 2, -32.8908, -68.8272, 450.00),
+  (3, 'Depósito Buenos Aires', 'Av. 9 de Julio 300', 3, -34.6037, -58.3816, 600.00),
+  (4, 'Depósito La Plata', 'Calle 7 #800', 3, -34.9211, -57.9545, 480.00),
+  (13, 'Depósito San Luis', 'Ruta Nacional 7 Km 320', 12, -33.2950, -66.3356, 470.00),
+  
+  -- Zona Litoral (Críticos para conectar Norte con Centro)
+  (5, 'Depósito Rosario', 'Av. Pellegrini 2500', 4, -32.9442, -60.6509, 520.00),
+  (6, 'Depósito Santa Fe', 'Ruta Nacional 9 Km 470', 5, -31.6109, -60.7084, 490.00),
+  (7, 'Depósito Paraná', 'Av. Ramírez 1200', 6, -31.7330, -60.5247, 475.00),
+  (21, 'Depósito Corrientes', 'Av. Tres de Abril 850', 20, -27.4814, -58.8221, 495.00),
+  (22, 'Depósito Entre Ríos', 'Calle Urquiza 1100', 6, -32.3881, -60.6754, 485.00),
+  (20, 'Depósito Misiones', 'Ruta Nacional 12 Km 2340', 19, -27.4305, -55.5019, 510.00),
+
+  -- Zona Norte
+  (8, 'Depósito Salta', 'Ruta Nacional 9 Km 1234', 7, -24.7859, -65.4107, 550.00),
+  (9, 'Depósito Jujuy', 'Calle Gorriti 450', 8, -24.1856, -65.2995, 530.00),
+  (10, 'Depósito Tucumán', 'Av. Aconquija 3000', 9, -26.8083, -65.2176, 510.00),
+  (11, 'Depósito La Rioja', 'Calle Pelagio Luna 800', 10, -29.4119, -66.8654, 450.00),
+  (12, 'Depósito Catamarca', 'Av. Virgen del Valle 1500', 11, -28.4667, -65.4833, 480.00),
+  (19, 'Depósito Formosa', 'Ruta Nacional 9 Km 1850', 18, -25.5606, -60.9744, 500.00),
+  (23, 'Depósito Santiago del Estero', 'Av. Libertad 2200', 21, -27.7975, -64.2614, 470.00),
+
+  -- Zona Sur (Patagonia)
+  (14, 'Depósito Neuquén', 'Av. Olascoaga 2800', 13, -38.9521, -68.0585, 520.00),
+  (15, 'Depósito Río Negro', 'Ruta Nacional 5 Km 160', 14, -41.1337, -71.3089, 540.00),
+  (16, 'Depósito Chubut', 'Calle Rivadavia 1200', 15, -42.7628, -65.0383, 560.00),
+  (17, 'Depósito Santa Cruz', 'Av. Kirchner 3500', 16, -50.3680, -72.5411, 580.00),
+  (18, 'Depósito Tierra del Fuego', 'Ruta Nacional 3 Km 20', 17, -54.8019, -68.3304, 600.00)
+ON CONFLICT (id_deposito) DO NOTHING;
+
+-- 6. FLOTA DE CAMIONES COMPLETA
+INSERT INTO camiones (patente, nombre_transportista, telefono_transportista, capacidad_peso, capacidad_volumen, consumo_combustible_km, costo_por_km, disponibilidad)
+VALUES
+  -- == FLOTA ESTÁNDAR (Originales) ==
+  ('ABC123', 'Juan Pérez', '+54 9 351 1234567', 25000, 80, 8.5, 150.00, true),
+  ('XYZ789', 'Carlos López', '+54 9 351 9876543', 20000, 60, 10.0, 140.00, true),
+  ('DEF456', 'María García', '+54 9 351 5555555', 15000, 50, 9.0, 145.00, true),
+  
+  -- == FLOTA ESPECIALIZADA (Para pruebas de lógica de selección) ==
+  -- Camión Liviano (Barato, poca carga. El sistema NO debería elegirlo para cargas grandes)
+  ('LIV001', 'Pedro González', '+54 9 351 1112222', 5000, 20, 5.0, 90.00, true),
+
+  -- Camión Mediano (Balanceado)
+  ('MED002', 'Ana Martínez', '+54 9 351 3334444', 12000, 45, 7.5, 120.00, true),
+
+  -- Camión Pesado (Caro, mucha carga. El sistema debería elegirlo SOLO si es necesario)
+  ('PES003', 'Roberto Díaz', '+54 9 351 5556666', 30000, 100, 14.0, 200.00, true),
+
+  -- Camión Larga Distancia (Optimizado en consumo, costo medio)
+  ('LAR004', 'Laura Sánchez', '+54 9 351 7778888', 28000, 90, 11.0, 180.00, true),
+
+  -- Camión "Backup" (Caro e ineficiente. Solo debería usarse si no hay otros)
+  ('CAR005', 'Miguel Torres', '+54 9 351 9990000', 25000, 80, 10.0, 250.00, true),
+
+  -- == CASOS DE BORDE (Volumen vs Peso) ==
+  -- Mucho volumen, poco peso (ej: espuma/telgopor). Prueba límite de volumen.
+  ('VOL006', 'Transporte Espumita', '+54 9 351 2223333', 5000, 120, 12.0, 160.00, true),
+
+  -- Mucho peso, poco volumen (ej: metales). Prueba límite de peso.
+  ('DEN007', 'Transporte Hierro', '+54 9 351 4445555', 35000, 30, 16.0, 220.00, true),
+
+  -- == FLOTA DE REFUERZO (Para evitar "No hay camiones" en pruebas concurrentes) ==
+  ('STD008', 'Flota Común SA', '+54 9 351 6667777', 25000, 80, 8.5, 150.00, true),
+  ('STD009', 'Flota Común SA', '+54 9 351 6667778', 25000, 80, 8.5, 150.00, true),
+  ('STD010', 'Flota Común SA', '+54 9 351 6667779', 25000, 80, 8.5, 150.00, true)
+
+ON CONFLICT (patente) DO NOTHING;
+
+-- 7. CONTENEDORES DE PRUEBA (Opcional)
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='contenedores') THEN
-    -- intentar insertar un contenedor ligado al cliente con dni 12345678 si existe
+    -- Insertar contenedor ligado al cliente principal si existe
     INSERT INTO contenedores (peso, volumen, id_cliente_asociado)
     SELECT 500.0, 50.0, id_cliente FROM clientes WHERE dni='12345678' LIMIT 1
     ON CONFLICT DO NOTHING;
   END IF;
 END$$;
-
--- Fin de inserts explícitos
