@@ -70,77 +70,196 @@ public class RutaServiceImpl implements RutaService {
         private Boolean disponibilidad;
     }
 
-    // --- MÉTODOS PÚBLICOS (Casos de Uso) ---
-
+    // --- MÉTODOS PÚBLICOS (Casos de Uso) ---ssss
     @Override
     @Transactional
-public Ruta crearRutaTentativa(CrearRutaRequest request) {
-    Ruta ruta = new Ruta();
-    ruta.setIdSolicitud(request.getIdSolicitud());
-    
-    // --- LÓGICA DE AUTOMATIZACIÓN ---
-    List<CrearRutaRequest.TramoDTO> tramosDTO = request.getTramos();
+    public Ruta crearRutaTentativa(CrearRutaRequest request) {
+        Ruta ruta = new Ruta();
+        ruta.setIdSolicitud(request.getIdSolicitud());
 
-    // Si no mandan tramos manuales, los calculamos nosotros
-    if (tramosDTO == null || tramosDTO.isEmpty()) {
-        tramosDTO = new ArrayList<>();
+        List<CrearRutaRequest.TramoDTO> tramosDTO = request.getTramos();
+
+        // Si no hay tramos manuales, calculamos la ruta automática
+        if (tramosDTO == null || tramosDTO.isEmpty()) {
+            tramosDTO = new ArrayList<>();
+            
+            // OPTIMIZACIÓN 1: Traemos la lista de depósitos UNA sola vez (en memoria)
+            List<Deposito> todosLosDepositos = depositoRepository.findAll();
+            if (todosLosDepositos.isEmpty()) {
+                throw new EntityNotFoundException("No hay depósitos registrados en el sistema.");
+            }
+
+            // 1. Obtener coordenadas de la solicitud
+            SolicitudExternaDTO solicitudData = obtenerDatosSolicitud(request.getIdSolicitud());
+
+            // 2. Encontrar origen y destino usando la lista en memoria y fórmula Haversine
+            Deposito origen = buscarMasCercano(todosLosDepositos, solicitudData.getOrigenLatitud(), solicitudData.getOrigenLongitud(), null);
+            Deposito destino = buscarMasCercano(todosLosDepositos, solicitudData.getDestinoLatitud(), solicitudData.getDestinoLongitud(), null);
+
+            // 3. Calcular distancia total
+            double distanciaTotalKm = calcularDistanciaHaversine(
+                    origen.getLatitud(), origen.getLongitud(),
+                    destino.getLatitud(), destino.getLongitud()
+            );
+
+            logger.info("Planificando ruta: {} -> {} ({} km)", origen.getNombre(), destino.getNombre(), String.format("%.2f", distanciaTotalKm));
+
+            // 4. Lógica de división (600km)
+            if (distanciaTotalKm > 600.0) {
+                // Pasamos la lista de depósitos para no consultarla de nuevo
+                tramosDTO = generarTramosIntermedios(origen, destino, distanciaTotalKm, todosLosDepositos);
+            } else {
+                // Ruta directa
+                CrearRutaRequest.TramoDTO tramo = new CrearRutaRequest.TramoDTO();
+                tramo.setIdDepositoOrigen(origen.getId());
+                tramo.setIdDepositoDestino(destino.getId());
+                tramo.setIdTipoTramo(1L); 
+                tramosDTO.add(tramo);
+            }
+        }
+
+        ruta.setCantidadTramos(tramosDTO.size());
+        ruta.setCantidadDepositos(tramosDTO.size() + 1);
         
-        // 1. Buscar datos de la solicitud (Origen y Destino del cliente)
-        SolicitudExternaDTO solicitudData = obtenerDatosSolicitud(request.getIdSolicitud());
+        Ruta rutaGuardada = rutaRepository.save(ruta);
+
+        // Guardar los tramos
+        EstadoTramo estadoEstimado = buscarEstadoTramo(EstadosTramo.ESTIMADO);
+        Tarifa tarifaBase = tarifaRepository.findById(1L).orElseThrow(() -> new EntityNotFoundException("Tarifa base no encontrada"));
+
+        List<Tramo> tramosCreados = new ArrayList<>();
+        for (CrearRutaRequest.TramoDTO dto : tramosDTO) {
+            tramosCreados.add(crearTramo(dto, rutaGuardada, estadoEstimado, tarifaBase));
+        }
+        rutaGuardada.setTramos(tramosCreados);
         
-        // 2. Encontrar depósito más cercano al origen del cliente
-        Deposito origen = encontrarDepositoMasCercano(solicitudData.getOrigenLatitud(), solicitudData.getOrigenLongitud());
-        
-        // 3. Encontrar depósito más cercano al destino del cliente
-        Deposito destino = encontrarDepositoMasCercano(solicitudData.getDestinoLatitud(), solicitudData.getDestinoLongitud());
-        
-        // 4. Verificar si son el mismo (viaje local) o distintos
-        // Si son distintos, creamos un tramo entre ellos.
-        // Si es el mismo depósito, igual creamos un tramo "simbólico" o lanzamos error según tu regla de negocio.
-        // Asumiremos ruta directa entre depósitos:
-        
-        CrearRutaRequest.TramoDTO tramoAuto = new CrearRutaRequest.TramoDTO();
-        tramoAuto.setIdDepositoOrigen(origen.getId());
-        tramoAuto.setIdDepositoDestino(destino.getId());
-        tramoAuto.setIdTipoTramo(1L); // 1L = TERRESTRE por defecto
-        
-        tramosDTO.add(tramoAuto);
-        
-        logger.info("Ruta automática generada: Depósito {} -> Depósito {}", origen.getNombre(), destino.getNombre());
+        return rutaGuardada;
     }
-    // --------------------------------
 
-    ruta.setCantidadTramos(tramosDTO.size());
-    Ruta rutaGuardada = rutaRepository.save(ruta);
+ 
+    private List<CrearRutaRequest.TramoDTO> generarTramosIntermedios(Deposito origen, Deposito destino, double distanciaTotal, List<Deposito> todosLosDepositos) {
+        List<CrearRutaRequest.TramoDTO> tramos = new ArrayList<>();
+        Deposito actual = origen;
+        
+        // Variables para iteración
+        double latActual = actual.getLatitud().doubleValue();
+        double lonActual = actual.getLongitud().doubleValue();
+        double latDestino = destino.getLatitud().doubleValue();
+        double lonDestino = destino.getLongitud().doubleValue();
+        
+        double distanciaRestante = distanciaTotal;
+        int iteracion = 0;
 
-    EstadoTramo estadoEstimado = buscarEstadoTramo(EstadosTramo.ESTIMADO);
-    Tarifa tarifaBase = tarifaRepository.findById(1L) 
-            .orElseThrow(() -> new EntityNotFoundException("Tarifa base no encontrada"));
+        while (distanciaRestante > 600.0 && iteracion < 20) {
+            // Calcular punto ideal a 600km hacia el destino
+            double ratio = 600.0 / distanciaRestante;
+            double latIdeal = latActual + (latDestino - latActual) * ratio;
+            double lonIdeal = lonActual + (lonDestino - lonActual) * ratio;
 
-    List<Tramo> tramosCreados = new ArrayList<>();
-    for (CrearRutaRequest.TramoDTO tramoDto : tramosDTO) {
-        tramosCreados.add(crearTramo(tramoDto, rutaGuardada, estadoEstimado, tarifaBase));
+            // OPTIMIZACIÓN 2: Usamos el método unificado pasando la lista y excluyendo el actual
+            Deposito intermedio = buscarMasCercano(
+                todosLosDepositos, 
+                BigDecimal.valueOf(latIdeal), 
+                BigDecimal.valueOf(lonIdeal), 
+                actual.getId() // Excluir ID actual para avanzar
+            );
+
+            // Crear tramo
+            CrearRutaRequest.TramoDTO tramo = new CrearRutaRequest.TramoDTO();
+            tramo.setIdDepositoOrigen(actual.getId());
+            tramo.setIdDepositoDestino(intermedio.getId());
+            tramo.setIdTipoTramo(1L);
+            tramos.add(tramo);
+
+            // Avanzar
+            actual = intermedio;
+            latActual = actual.getLatitud().doubleValue();
+            lonActual = actual.getLongitud().doubleValue();
+            
+            // Recalcular restante
+            distanciaRestante = calcularDistanciaHaversine(
+                BigDecimal.valueOf(latActual), BigDecimal.valueOf(lonActual),
+                destino.getLatitud(), destino.getLongitud()
+            );
+            iteracion++;
+        }
+
+        // Tramo final
+        CrearRutaRequest.TramoDTO tramoFinal = new CrearRutaRequest.TramoDTO();
+        tramoFinal.setIdDepositoOrigen(actual.getId());
+        tramoFinal.setIdDepositoDestino(destino.getId());
+        tramoFinal.setIdTipoTramo(1L);
+        tramos.add(tramoFinal);
+
+        return tramos;
     }
 
-    rutaGuardada.setTramos(tramosCreados);
-    return rutaGuardada;
-}
 
-    @Override
+
+    /**
+     * Método ÚNICO para buscar depósitos cercanos.
+     * Reemplaza a "encontrarDepositoMasCercano" y "encontrarDepositoIntermedioMasCercano".
+     * @param idExcluido (Opcional) ID del depósito a ignorar (ej. el origen actual).
+     */
+    private Deposito buscarMasCercano(List<Deposito> listaDepositos, BigDecimal lat, BigDecimal lon, Long idExcluido) {
+        Deposito masCercano = null;
+        double menorDistancia = Double.MAX_VALUE;
+
+        for (Deposito depo : listaDepositos) {
+            if (idExcluido != null && depo.getId().equals(idExcluido)) {
+                continue; 
+            }
+
+            // Usamos Haversine que es más preciso que la fórmula euclidiana vieja
+            double dist = calcularDistanciaHaversine(lat, lon, depo.getLatitud(), depo.getLongitud());
+            
+            if (dist < menorDistancia) {
+                menorDistancia = dist;
+                masCercano = depo;
+            }
+        }
+        if (masCercano == null) throw new EntityNotFoundException("No se encontró un depósito cercano viable.");
+        return masCercano;
+    }
+
+    // Mantener el método calcularDistanciaHaversine tal como te lo pasé antes.
+    private double calcularDistanciaHaversine(BigDecimal lat1BD, BigDecimal lon1BD, BigDecimal lat2BD, BigDecimal lon2BD) {
+
+        double lat1 = lat1BD.doubleValue();
+        double lon1 = lon1BD.doubleValue();
+        double lat2 = lat2BD.doubleValue();
+        double lon2 = lon2BD.doubleValue();
+        final int R = 6371; 
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+
+
+@Override
     @Transactional
     public Tramo asignarCamionATramo(Long idTramo, AsignarCamionRequest request) {
         Tramo tramo = buscarTramo(idTramo);
 
-        // Extraemos la validación a un método privado
+        // 1. Validar que el camión existe y soporta la carga (Lógica existente)
         CamionDTO camionValidado = validarCamion(request.getPatenteCamion(), request.getPesoContenedor(),
                 request.getVolumenContenedor());
 
+        // 2. NUEVA VALIDACIÓN: Verificar que no esté en tramos adyacentes
+        validarCamionNoConsecutivo(tramo, camionValidado.getPatente());
+
+        // 3. Asignar y Guardar
         tramo.setPatenteCamionAsignado(camionValidado.getPatente());
         tramo.setEstadoTramo(buscarEstadoTramo(EstadosTramo.ASIGNADO));
 
         Tramo tramoGuardado = tramoRepository.save(tramo);
 
-        // Notificar a ms-solicitudes que el camión ha sido asignado
+        // Notificar a ms-solicitudes
         try {
             notificarEstadoContenedor(tramo.getRuta().getIdSolicitud(), "ASIGNADO");
         } catch (Exception e) {
@@ -148,6 +267,45 @@ public Ruta crearRutaTentativa(CrearRutaRequest request) {
         }
 
         return tramoGuardado;
+    }
+
+    /**
+     * Valida que el camión no esté asignado al tramo inmediatamente anterior o posterior
+     * de la misma ruta.
+     */
+    private void validarCamionNoConsecutivo(Tramo tramoActual, String patenteCamion) {
+        Ruta ruta = tramoActual.getRuta();
+        List<Tramo> tramosDeLaRuta = ruta.getTramos();
+        
+        // Ordenar tramos por ID para asegurar el orden secuencial (asumiendo que se crean en orden)
+        // O si tienes un campo 'orden', úsalo. Si no, el orden de inserción/ID suele servir.
+        tramosDeLaRuta.sort((t1, t2) -> t1.getId().compareTo(t2.getId()));
+
+        int indiceActual = -1;
+        for (int i = 0; i < tramosDeLaRuta.size(); i++) {
+            if (tramosDeLaRuta.get(i).getId().equals(tramoActual.getId())) {
+                indiceActual = i;
+                break;
+            }
+        }
+
+        if (indiceActual == -1) return; // No debería pasar
+
+        // Verificar tramo ANTERIOR (si existe)
+        if (indiceActual > 0) {
+            Tramo anterior = tramosDeLaRuta.get(indiceActual - 1);
+            if (patenteCamion.equalsIgnoreCase(anterior.getPatenteCamionAsignado())) {
+                throw new IllegalStateException("El camión " + patenteCamion + " ya está asignado al tramo anterior. No puede realizar tramos consecutivos.");
+            }
+        }
+
+        // Verificar tramo SIGUIENTE (si existe y ya tiene asignación)
+        if (indiceActual < tramosDeLaRuta.size() - 1) {
+            Tramo siguiente = tramosDeLaRuta.get(indiceActual + 1);
+            if (patenteCamion.equalsIgnoreCase(siguiente.getPatenteCamionAsignado())) {
+                throw new IllegalStateException("El camión " + patenteCamion + " ya está asignado al tramo siguiente. No puede realizar tramos consecutivos.");
+            }
+        }
     }
 
     @Override
@@ -850,33 +1008,6 @@ private SolicitudExternaDTO obtenerDatosSolicitud(Long idSolicitud) {
     }
 }
 
-
-
-
-
-
-private Deposito encontrarDepositoMasCercano(BigDecimal lat, BigDecimal lon) {
-    List<Deposito> todosLosDepositos = depositoRepository.findAll();
-    Deposito masCercano = null;
-    double menorDistancia = Double.MAX_VALUE;
-
-    for (Deposito depo : todosLosDepositos) {
-        // Cálculo simple de distancia euclidiana (para mayor precisión usar Haversine, pero esto sirve para el TP)
-        double cateto1 = depo.getLatitud().subtract(lat).doubleValue();
-        double cateto2 = depo.getLongitud().subtract(lon).doubleValue();
-        double distancia = Math.sqrt(cateto1 * cateto1 + cateto2 * cateto2);
-
-        if (distancia < menorDistancia) {
-            menorDistancia = distancia;
-            masCercano = depo;
-        }
-    }
-    
-    if (masCercano == null) {
-        throw new EntityNotFoundException("No hay depósitos disponibles para generar la ruta");
-    }
-    return masCercano;
-}
 
 
 
